@@ -27,6 +27,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentUser } from "@/lib/use-current-user";
 import type { AppRole } from "@/lib/use-current-user";
@@ -37,19 +38,29 @@ type NavItem = {
   icon: typeof LayoutDashboard;
   hideFor?: AppRole[];
   internalOnly?: boolean;
+  clientOnly?: boolean;
 };
 
-const mainItems: NavItem[] = [
+const internalItems: NavItem[] = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Clients", url: "/clients", icon: Users, internalOnly: true },
   { title: "Companies", url: "/companies", icon: Building2 },
-  { title: "Transactions", url: "/transactions", icon: Receipt },
+  { title: "Transactions", url: "/transactions", icon: Receipt, internalOnly: true },
   { title: "Invoices", url: "/invoices", icon: FileText },
   { title: "Funding", url: "/funding", icon: Landmark },
-  { title: "Loans", url: "/loans", icon: Wallet },
+  { title: "Loans", url: "/loans", icon: Wallet, internalOnly: true },
   { title: "Calendar", url: "/calendar", icon: Calendar },
   { title: "Documents", url: "/documents", icon: FolderOpen },
   { title: "Activity", url: "/activity", icon: Activity, internalOnly: true },
+];
+
+const clientItems: NavItem[] = [
+  { title: "Overview", url: "/dashboard", icon: LayoutDashboard, clientOnly: true },
+  { title: "My companies", url: "/companies", icon: Building2, clientOnly: true },
+  { title: "Documents", url: "/documents", icon: FolderOpen, clientOnly: true },
+  { title: "Invoices", url: "/invoices", icon: FileText, clientOnly: true },
+  { title: "Funding", url: "/funding", icon: Landmark, clientOnly: true },
+  { title: "Calendar", url: "/calendar", icon: Calendar, clientOnly: true },
 ];
 
 export function AppSidebar() {
@@ -58,8 +69,12 @@ export function AppSidebar() {
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   const { data: user } = useCurrentUser();
 
-  const visibleItems = mainItems.filter((item) => {
+  const navItems = user?.isClient ? clientItems : internalItems;
+  const groupLabel = user?.isClient ? "Your account" : "Operations";
+
+  const visibleItems = navItems.filter((item) => {
     if (item.internalOnly && !user?.isInternal) return false;
+    if (item.clientOnly && !user?.isClient) return false;
     if (item.hideFor && user?.roles.some((r) => item.hideFor!.includes(r))) return false;
     return true;
   });
@@ -73,16 +88,19 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
-      <SidebarHeader className="px-4 py-5">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground font-bold text-sm">
+      <SidebarHeader className="border-b border-sidebar-border/60 px-4 py-5">
+        <div className="flex items-center gap-3">
+          <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground font-serif text-lg font-bold shadow-sm">
             C
+            <span className="absolute -bottom-0.5 left-1 right-1 h-0.5 rounded-full bg-sidebar-primary/80" />
           </div>
           {!collapsed && (
-            <div className="flex flex-col leading-tight">
-              <span className="text-sm font-semibold text-sidebar-foreground">Continuum</span>
-              <span className="text-[10px] uppercase tracking-wider text-sidebar-foreground/60">
-                Capital Group
+            <div className="flex min-w-0 flex-col leading-tight">
+              <span className="truncate font-serif text-sm font-semibold text-sidebar-foreground">
+                Continuum Capital
+              </span>
+              <span className="text-[10px] uppercase tracking-[0.14em] text-sidebar-foreground/55">
+                {user?.isClient ? "Client portal" : "Chicago · Operations"}
               </span>
             </div>
           )}
@@ -91,7 +109,7 @@ export function AppSidebar() {
 
       <SidebarContent>
         <SidebarGroup>
-          {!collapsed && <SidebarGroupLabel>Workspace</SidebarGroupLabel>}
+          {!collapsed && <SidebarGroupLabel>{groupLabel}</SidebarGroupLabel>}
           <SidebarGroupContent>
             <SidebarMenu>
               {visibleItems.map((item) => (
@@ -133,9 +151,17 @@ export function AppSidebar() {
 
       <SidebarFooter className="border-t border-sidebar-border px-3 py-3">
         {!collapsed && user && (
-          <div className="flex flex-col gap-0.5 text-xs">
-            <span className="font-medium text-sidebar-foreground truncate">{user.fullName}</span>
-            <span className="text-sidebar-foreground/60 truncate">{user.email}</span>
+          <div className="space-y-1.5">
+            <Badge
+              variant="outline"
+              className="border-sidebar-primary/40 bg-sidebar-primary/10 text-[10px] text-sidebar-primary"
+            >
+              {user.isInternal ? "Staff" : "Client"}
+            </Badge>
+            <div className="flex flex-col gap-0.5 text-xs">
+              <span className="font-medium text-sidebar-foreground truncate">{user.fullName}</span>
+              <span className="text-sidebar-foreground/60 truncate">{user.email}</span>
+            </div>
           </div>
         )}
       </SidebarFooter>

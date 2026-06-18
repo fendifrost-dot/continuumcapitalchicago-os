@@ -8,12 +8,14 @@ import { Button } from "@/components/ui/button";
 import { DocumentUpload, getDocumentUrl } from "@/components/document-upload";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDateTime } from "@/lib/format";
+import { useCurrentUser } from "@/lib/use-current-user";
 
 export const Route = createFileRoute("/_authenticated/documents")({
   component: DocumentsPage,
 });
 
 function DocumentsPage() {
+  const { data: user } = useCurrentUser();
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["documents"],
     queryFn: async () => {
@@ -37,10 +39,14 @@ function DocumentsPage() {
     <>
       <PageHeader
         title="Documents"
-        description="Formation, funding, tax, invoices, contracts, leases, compliance"
+        description={
+          user?.isClient
+            ? "Your uploaded files and records"
+            : "Formation, funding, tax, invoices, contracts, leases, compliance"
+        }
       />
       <div className="p-6 space-y-4">
-        <DocumentUpload onUploaded={() => refetch()} />
+        {user?.isInternal && <DocumentUpload onUploaded={() => refetch()} />}
         <Card className="overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">

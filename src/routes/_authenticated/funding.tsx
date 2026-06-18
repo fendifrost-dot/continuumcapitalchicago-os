@@ -12,6 +12,7 @@ import { FundingFormDialog } from "@/components/funding-form-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { currency } from "@/lib/format";
 import { logActivity } from "@/lib/activity";
+import { useCurrentUser } from "@/lib/use-current-user";
 
 export const Route = createFileRoute("/_authenticated/funding")({
   component: FundingPage,
@@ -30,6 +31,7 @@ const stages = [
 function FundingPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const qc = useQueryClient();
+  const { data: user } = useCurrentUser();
 
   const { data, isLoading } = useQuery({
     queryKey: ["funding"],
@@ -77,11 +79,17 @@ function FundingPage() {
     <>
       <PageHeader
         title="Funding"
-        description="Pipeline of funding applications"
+        description={
+          user?.isClient
+            ? "Funding progress for your companies"
+            : "Pipeline of funding applications"
+        }
         actions={
-          <Button size="sm" onClick={() => setDialogOpen(true)}>
-            <Plus className="h-4 w-4" /> New application
-          </Button>
+          user?.isInternal ? (
+            <Button size="sm" onClick={() => setDialogOpen(true)}>
+              <Plus className="h-4 w-4" /> New application
+            </Button>
+          ) : undefined
         }
       />
       <div className="p-6 overflow-x-auto">
@@ -124,22 +132,24 @@ function FundingPage() {
                             Requested: {currency(f.requested_amount)}
                           </div>
                         )}
-                        <div className="flex flex-wrap gap-1">
-                          {stages
-                            .filter((s) => s !== stage)
-                            .slice(0, 3)
-                            .map((s) => (
-                              <Button
-                                key={s}
-                                size="sm"
-                                variant="ghost"
-                                className="h-6 text-[10px] px-2"
-                                onClick={() => moveStage(f.id, s, f.lender, f.company_id)}
-                              >
-                                → {s.replace("_", " ")}
-                              </Button>
-                            ))}
-                        </div>
+                        {user?.isInternal && (
+                          <div className="flex flex-wrap gap-1">
+                            {stages
+                              .filter((s) => s !== stage)
+                              .slice(0, 3)
+                              .map((s) => (
+                                <Button
+                                  key={s}
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 text-[10px] px-2"
+                                  onClick={() => moveStage(f.id, s, f.lender, f.company_id)}
+                                >
+                                  → {s.replace("_", " ")}
+                                </Button>
+                              ))}
+                          </div>
+                        )}
                       </div>
                     ),
                   )}

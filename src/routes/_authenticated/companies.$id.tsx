@@ -32,6 +32,7 @@ function CompanyDetail() {
   const { data: user } = useCurrentUser();
   const canSeeCredentials = user && canViewCredentials(user.roles);
   const canInvoice = user && canGenerateInvoices(user.roles);
+  const isStaff = user?.isInternal;
 
   const [txDialog, setTxDialog] = useState(false);
   const [credDialog, setCredDialog] = useState(false);
@@ -147,12 +148,12 @@ function CompanyDetail() {
           <TabsList className="flex-wrap">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             {canSeeCredentials && <TabsTrigger value="credentials">Credentials</TabsTrigger>}
-            <TabsTrigger value="transactions">Transactions</TabsTrigger>
+            {isStaff && <TabsTrigger value="transactions">Transactions</TabsTrigger>}
             <TabsTrigger value="funding">Funding</TabsTrigger>
-            <TabsTrigger value="loans">Loans</TabsTrigger>
+            {isStaff && <TabsTrigger value="loans">Loans</TabsTrigger>}
             <TabsTrigger value="calendar">Calendar</TabsTrigger>
             <TabsTrigger value="documents">Documents</TabsTrigger>
-            <TabsTrigger value="audit">Audit Trail</TabsTrigger>
+            {isStaff && <TabsTrigger value="audit">Audit Trail</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4">
@@ -197,30 +198,32 @@ function CompanyDetail() {
               </Card>
               <InfoCard label="Office lease" value={company?.lease_status ?? "—"} />
             </div>
-            <Card>
-              <CardHeader className="border-b">
-                <CardTitle className="text-sm font-semibold">Quick actions</CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-wrap gap-2 p-4">
-                <Button size="sm" variant="outline" onClick={() => setTxDialog(true)}>
-                  <Plus className="h-4 w-4" /> Add transaction
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => refetchDocs()}>
-                  <Upload className="h-4 w-4" /> Upload document
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => setFundDialog(true)}>
-                  <Plus className="h-4 w-4" /> New funding application
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => setLoanDialog(true)}>
-                  <Plus className="h-4 w-4" /> Add loan account
-                </Button>
-                {canSeeCredentials && (
-                  <Button size="sm" variant="outline" onClick={() => setCredDialog(true)}>
-                    <Plus className="h-4 w-4" /> Add vault reference
+            {isStaff && (
+              <Card>
+                <CardHeader className="border-b">
+                  <CardTitle className="text-sm font-semibold">Quick actions</CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-wrap gap-2 p-4">
+                  <Button size="sm" variant="outline" onClick={() => setTxDialog(true)}>
+                    <Plus className="h-4 w-4" /> Add transaction
                   </Button>
-                )}
-              </CardContent>
-            </Card>
+                  <Button size="sm" variant="outline" onClick={() => refetchDocs()}>
+                    <Upload className="h-4 w-4" /> Upload document
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setFundDialog(true)}>
+                    <Plus className="h-4 w-4" /> New funding application
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setLoanDialog(true)}>
+                    <Plus className="h-4 w-4" /> Add loan account
+                  </Button>
+                  {canSeeCredentials && (
+                    <Button size="sm" variant="outline" onClick={() => setCredDialog(true)}>
+                      <Plus className="h-4 w-4" /> Add vault reference
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {canSeeCredentials && (
@@ -315,9 +318,11 @@ function CompanyDetail() {
             <Card className="overflow-hidden">
               <div className="flex items-center justify-between border-b px-4 py-2">
                 <span className="text-sm font-medium">Funding applications</span>
-                <Button size="sm" onClick={() => setFundDialog(true)}>
-                  <Plus className="h-4 w-4" /> Add
-                </Button>
+                {isStaff && (
+                  <Button size="sm" onClick={() => setFundDialog(true)}>
+                    <Plus className="h-4 w-4" /> Add
+                  </Button>
+                )}
               </div>
               {!funding?.length ? (
                 <div className="p-10 text-center text-sm text-muted-foreground">
@@ -415,7 +420,7 @@ function CompanyDetail() {
 
           <TabsContent value="documents">
             <Card className="p-4 space-y-4">
-              <DocumentUpload companyId={id} onUploaded={() => refetchDocs()} />
+              {isStaff && <DocumentUpload companyId={id} onUploaded={() => refetchDocs()} />}
               {!documents?.length ? (
                 <div className="py-10 text-center text-sm text-muted-foreground">No documents</div>
               ) : (

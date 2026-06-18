@@ -9,11 +9,7 @@ Deno.serve(async (req) => {
   const body = await req.json().catch(() => ({}));
 
   // Supabase Auth Hook payload or direct client invoke
-  const userId =
-    body.user_id ??
-    body.record?.id ??
-    body.metadata?.uuid ??
-    body.user?.id;
+  const userId = body.user_id ?? body.record?.id ?? body.metadata?.uuid ?? body.user?.id;
 
   const eventType = body.type ?? body.event ?? body.action ?? "login";
   const ip = req.headers.get("x-forwarded-for") ?? body.ip ?? null;
@@ -27,7 +23,8 @@ Deno.serve(async (req) => {
     .maybeSingle();
 
   const actorName = profile?.full_name ?? profile?.email ?? "User";
-  const isLogin = String(eventType).toLowerCase().includes("login") ||
+  const isLogin =
+    String(eventType).toLowerCase().includes("login") ||
     String(eventType).toLowerCase() === "signed_in";
 
   await supabase.from("activity_logs").insert({

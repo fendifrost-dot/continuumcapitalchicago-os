@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
+import { bootstrapUserSession } from "@/lib/session";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -24,6 +25,15 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const afterSignIn = async (userId: string) => {
+    await bootstrapUserSession();
+    await supabase.functions.invoke("auth-audit", {
+      body: { type: "login", user_id: userId },
+    });
+    toast.success("Signed in");
+    navigate({ to: "/dashboard" });
+  };
+
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -33,44 +43,52 @@ function AuthPage() {
       toast.error(error.message);
       return;
     }
-    if (data.user) {
-      await supabase.functions.invoke("auth-audit", {
-        body: { type: "login", user_id: data.user.id },
-      });
-    }
-    toast.success("Signed in");
-    navigate({ to: "/dashboard" });
+    if (data.user) await afterSignIn(data.user.id);
   };
 
   const handleGoogle = async () => {
+    setLoading(true);
     const result = await lovable.auth.signInWithOAuth("google", {
       redirect_uri: window.location.origin,
     });
+    setLoading(false);
     if (result.error) {
       toast.error(result.error.message ?? "Sign-in failed");
       return;
     }
-    if (!result.redirected) navigate({ to: "/dashboard" });
+    if (!result.redirected) {
+      const { data } = await supabase.auth.getUser();
+      if (data.user) await afterSignIn(data.user.id);
+    }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-secondary px-4 py-12">
-      <div className="w-full max-w-md">
-        <div className="mb-8 flex items-center justify-center gap-2.5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold">
-            C
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-12">
+      <div
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_oklch(0.22_0.04_265)_0%,_oklch(0.14_0.03_265)_45%,_oklch(0.10_0.02_265)_100%)]"
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.07] [background-image:linear-gradient(oklch(1_0_0)_1px,transparent_1px),linear-gradient(90deg,oklch(1_0_0)_1px,transparent_1px)] [background-size:48px_48px]"
+        aria-hidden
+      />
+
+      <div className="relative w-full max-w-md">
+        <div className="mb-8 text-center">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-accent/15 ring-1 ring-accent/30">
+            <span className="font-serif text-2xl font-bold text-accent">C</span>
           </div>
-          <div className="leading-tight">
-            <div className="text-base font-semibold">Continuum</div>
-            <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
-              Capital Group OS
-            </div>
-          </div>
+          <h1 className="font-serif text-2xl font-semibold tracking-tight text-white">
+            Continuum Capital Group
+          </h1>
+          <p className="mt-1 text-sm text-white/60">Chicago · Client operations platform</p>
         </div>
 
-        <Card className="p-7 shadow-sm">
-          <h1 className="text-xl font-semibold tracking-tight">Sign in</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Access your operations workspace</p>
+        <Card className="border-white/10 bg-white/95 p-7 shadow-2xl backdrop-blur-sm">
+          <h2 className="text-lg font-semibold tracking-tight">Sign in</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Firm staff and invited clients use separate workspaces after login.
+          </p>
 
           <form onSubmit={handleEmailSignIn} className="mt-6 space-y-4">
             <div className="space-y-1.5">
@@ -82,19 +100,11 @@ function AuthPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@firm.com"
+                placeholder="you@continuumcapitalchicago.com"
               />
             </div>
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
-                <button
-                  type="button"
-                  className="text-xs text-muted-foreground hover:text-foreground"
-                >
-                  Forgot?
-                </button>
-              </div>
+              <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
                 type="password"
@@ -115,30 +125,12 @@ function AuthPage() {
             <div className="h-px flex-1 bg-border" />
           </div>
 
-          <Button variant="outline" className="w-full" onClick={handleGoogle}>
-            <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
-              <path
-                fill="#4285F4"
-                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-              />
-              <path
-                fill="#34A853"
-                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.99.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"
-              />
-              <path
-                fill="#EA4335"
-                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z"
-              />
-            </svg>
+          <Button variant="outline" className="w-full" onClick={handleGoogle} disabled={loading}>
             Continue with Google
           </Button>
 
           <p className="mt-6 text-center text-xs text-muted-foreground">
-            Access is invite-only. Contact your administrator if you need an account.
+            Client access requires an invitation from Continuum Capital Group staff.
           </p>
         </Card>
       </div>

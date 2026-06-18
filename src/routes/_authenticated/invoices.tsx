@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { currency, formatDate } from "@/lib/format";
 import { logActivity } from "@/lib/activity";
 import { invokeEdgeFunction } from "@/lib/edge-functions";
+import { useCurrentUser } from "@/lib/use-current-user";
 
 export const Route = createFileRoute("/_authenticated/invoices")({
   component: InvoicesPage,
@@ -25,6 +26,8 @@ const statusVariant: Record<string, "default" | "secondary" | "outline" | "destr
 
 function InvoicesPage() {
   const qc = useQueryClient();
+  const { data: user } = useCurrentUser();
+  const isStaff = user?.isInternal;
 
   const { data, isLoading } = useQuery({
     queryKey: ["invoices"],
@@ -88,7 +91,10 @@ function InvoicesPage() {
 
   return (
     <>
-      <PageHeader title="Invoices" description="Generate and track invoices" />
+      <PageHeader
+        title="Invoices"
+        description={isStaff ? "Generate and track invoices" : "Invoices for your companies"}
+      />
       <div className="p-6">
         <Card className="overflow-hidden">
           <table className="w-full text-sm">
@@ -158,7 +164,7 @@ function InvoicesPage() {
                         </Badge>
                       </td>
                       <td className="px-4 py-2.5 text-right space-x-1">
-                        {inv.pdf_path ? (
+                        {inv.pdf_path && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -167,7 +173,8 @@ function InvoicesPage() {
                           >
                             PDF
                           </Button>
-                        ) : (
+                        )}
+                        {isStaff && !inv.pdf_path && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -177,7 +184,7 @@ function InvoicesPage() {
                             Generate PDF
                           </Button>
                         )}
-                        {inv.status === "draft" && (
+                        {isStaff && inv.status === "draft" && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -189,7 +196,7 @@ function InvoicesPage() {
                             Mark sent
                           </Button>
                         )}
-                        {inv.status === "sent" && (
+                        {isStaff && inv.status === "sent" && (
                           <Button
                             size="sm"
                             variant="outline"

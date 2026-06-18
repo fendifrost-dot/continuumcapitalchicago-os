@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { CompanyFormDialog } from "@/components/company-form-dialog";
 import { supabase } from "@/integrations/supabase/client";
+import { useCurrentUser } from "@/lib/use-current-user";
 
 export const Route = createFileRoute("/_authenticated/companies")({
   component: CompaniesList,
@@ -17,6 +18,7 @@ export const Route = createFileRoute("/_authenticated/companies")({
 function CompaniesList() {
   const [q, setQ] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const { data: user } = useCurrentUser();
 
   const { data, isLoading } = useQuery({
     queryKey: ["companies"],
@@ -37,12 +39,16 @@ function CompaniesList() {
   return (
     <>
       <PageHeader
-        title="Companies"
-        description={`${data?.length ?? 0} total`}
+        title={user?.isClient ? "My companies" : "Companies"}
+        description={
+          user?.isClient ? "Businesses linked to your account" : `${data?.length ?? 0} total`
+        }
         actions={
-          <Button size="sm" onClick={() => setDialogOpen(true)}>
-            <Plus className="h-4 w-4" /> New company
-          </Button>
+          user?.isInternal ? (
+            <Button size="sm" onClick={() => setDialogOpen(true)}>
+              <Plus className="h-4 w-4" /> New company
+            </Button>
+          ) : undefined
         }
       />
       <div className="p-6 space-y-4">

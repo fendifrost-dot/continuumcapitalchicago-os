@@ -36,16 +36,16 @@ function SettingsPage() {
       return;
     }
     setInviting(true);
-    const { data, error } = await invokeEdgeFunction<{ invite_link?: string; email_sent?: boolean }>(
-      "send-invitation",
-      { email: inviteEmail.trim(), role: inviteRole },
-    );
+    const { data, error } = await invokeEdgeFunction<{
+      invite_link?: string;
+      email_sent?: boolean;
+    }>("send-invitation", { email: inviteEmail.trim(), role: inviteRole });
     setInviting(false);
     if (error) {
       toast.error(error);
       return;
     }
-    toast.success(data?.email_sent ? "Invitation emailed" : `Invitation created: ${data?.invite_link}`);
+    toast.success(`Invitation created. Share this link: ${data?.invite_link ?? ""}`);
     setInviteEmail("");
   };
 

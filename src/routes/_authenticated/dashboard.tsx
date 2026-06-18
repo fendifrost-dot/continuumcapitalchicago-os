@@ -3,17 +3,21 @@ import { useQuery } from "@tanstack/react-query";
 import { Plus, TrendingUp, AlertCircle, Clock, CheckCircle2 } from "lucide-react";
 
 import { PageHeader } from "@/components/app-shell";
+import { ClientDashboard } from "@/components/client-dashboard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { currency } from "@/lib/format";
+import { useCurrentUser } from "@/lib/use-current-user";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
 });
 
 function Dashboard() {
+  const { data: user } = useCurrentUser();
+  if (user?.isClient) return <ClientDashboard />;
   const { data: stats } = useQuery({
     queryKey: ["dashboard-stats"],
     queryFn: async () => {
@@ -64,12 +68,14 @@ function Dashboard() {
   return (
     <>
       <PageHeader
-        title="Dashboard"
-        description="Your operations at a glance"
+        title="Operations"
+        description="Firm-wide visibility across clients, companies, and activity"
         actions={
-          <Button size="sm">
-            <Plus className="h-4 w-4" /> Quick action
-          </Button>
+          user?.isInternal ? (
+            <Button size="sm" variant="outline" disabled>
+              <Plus className="h-4 w-4" /> Quick action
+            </Button>
+          ) : undefined
         }
       />
       <div className="p-6 space-y-6">

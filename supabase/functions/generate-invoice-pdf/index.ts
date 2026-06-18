@@ -61,7 +61,8 @@ Deno.serve(async (req) => {
   y -= 8;
   draw(`Bill to: ${company?.legal_name ?? "—"}`, 11, true);
   if (company?.address_line1) draw(company.address_line1);
-  if (company?.city) draw([company.city, company.state, company.postal_code].filter(Boolean).join(", "));
+  if (company?.city)
+    draw([company.city, company.state, company.postal_code].filter(Boolean).join(", "));
   if (company?.business_email) draw(company.business_email);
   y -= 12;
 

@@ -1,5 +1,4 @@
 import { createServiceClient, requireAdmin } from "../_shared/client.ts";
-import { sendEmail } from "../_shared/resend.ts";
 import { handleCors, jsonResponse } from "../_shared/cors.ts";
 
 Deno.serve(async (req) => {
@@ -48,20 +47,9 @@ Deno.serve(async (req) => {
     metadata: { email, role },
   });
 
-  const emailed = await sendEmail({
-    to: email,
-    subject: "You're invited to Continuum Capital Group OS",
-    html: `
-      <p>You've been invited to join Continuum Capital Group OS as <strong>${role}</strong>.</p>
-      <p><a href="${inviteLink}">Accept invitation</a></p>
-      <p>This link expires on ${new Date(invitation.expires_at).toLocaleDateString()}.</p>
-    `,
-  });
-
   return jsonResponse({
     ok: true,
     invitation_id: invitation.id,
     invite_link: inviteLink,
-    email_sent: emailed,
   });
 });

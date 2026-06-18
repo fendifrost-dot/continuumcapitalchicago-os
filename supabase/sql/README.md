@@ -6,9 +6,10 @@ The files here are reference scripts to copy into the SQL Editor when needed.
 
 ## Scripts
 
-| File | Purpose |
-|------|---------|
-| `audit_triggers_and_invoice_link.sql` | Links `invoice_items.transaction_id`, adds centralized audit triggers, ensures storage buckets exist |
+| File                                  | Purpose                                                                           |
+| ------------------------------------- | --------------------------------------------------------------------------------- |
+| `audit_triggers_and_invoice_link.sql` | Audit triggers and storage buckets                                                |
+| `role_assignment.sql`                 | Firm staff vs client role rules; promotes `@continuumcapitalchicago.com` accounts |
 
 ## Note on `supabase/migrations/`
 

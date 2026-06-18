@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { isInternalEmail } from "@/lib/roles";
 
 export type AppRole = "super_admin" | "consultant" | "assistant" | "bookkeeper" | "client";
 
@@ -12,6 +13,8 @@ export interface CurrentUser {
   isInternal: boolean;
   isAdmin: boolean;
   isClient: boolean;
+  isPending: boolean;
+  clientIds: string[];
 }
 
 export function useCurrentUser() {
@@ -22,27 +25,37 @@ export function useCurrentUser() {
       const user = userRes.user;
       if (!user) return null;
 
-      const [profileRes, rolesRes] = await Promise.all([
+      const email = user.email ?? null;
+
+      const [profileRes, rolesRes, portalRes] = await Promise.all([
         supabase.from("profiles").select("full_name, avatar_url").eq("id", user.id).maybeSingle(),
         supabase.from("user_roles").select("role").eq("user_id", user.id),
+        supabase.from("client_portal_users").select("client_id").eq("user_id", user.id),
       ]);
 
       const roles = (rolesRes.data ?? []).map((r) => r.role as AppRole);
-      const isInternal = roles.some((r) =>
-        ["super_admin", "consultant", "assistant", "bookkeeper"].includes(r),
-      );
+      const clientIds = (portalRes.data ?? []).map((r) => r.client_id);
+
+      const isInternal =
+        isInternalEmail(email) ||
+        roles.some((r) => ["super_admin", "consultant", "assistant", "bookkeeper"].includes(r));
+
+      const isClient = !isInternal && roles.includes("client");
+      const isPending = !isInternal && !isClient;
 
       return {
         id: user.id,
-        email: user.email ?? null,
+        email,
         fullName: profileRes.data?.full_name ?? user.email?.split("@")[0] ?? null,
         avatarUrl: profileRes.data?.avatar_url ?? null,
         roles,
         isInternal,
-        isAdmin: roles.includes("super_admin"),
-        isClient: roles.includes("client") || !isInternal,
+        isAdmin: roles.includes("super_admin") || isInternalEmail(email),
+        isClient,
+        isPending,
+        clientIds,
       };
     },
-    staleTime: 60_000,
+    staleTime: 30_000,
   });
 }

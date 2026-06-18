@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ClientFormDialog } from "@/components/client-form-dialog";
 import { supabase } from "@/integrations/supabase/client";
+import { useCurrentUser } from "@/lib/use-current-user";
 
 export const Route = createFileRoute("/_authenticated/clients")({
   component: ClientsList,
@@ -25,6 +26,7 @@ const statusVariant: Record<string, "default" | "secondary" | "outline" | "destr
 function ClientsList() {
   const [q, setQ] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const { data: user } = useCurrentUser();
 
   const { data, isLoading } = useQuery({
     queryKey: ["clients"],
@@ -51,9 +53,11 @@ function ClientsList() {
         title="Clients"
         description={`${data?.length ?? 0} total`}
         actions={
-          <Button size="sm" onClick={() => setDialogOpen(true)}>
-            <Plus className="h-4 w-4" /> New client
-          </Button>
+          user?.isInternal ? (
+            <Button size="sm" onClick={() => setDialogOpen(true)}>
+              <Plus className="h-4 w-4" /> New client
+            </Button>
+          ) : undefined
         }
       />
       <div className="p-6 space-y-4">

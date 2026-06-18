@@ -1,5 +1,4 @@
 import { createServiceClient } from "../_shared/client.ts";
-import { sendEmail } from "../_shared/resend.ts";
 import { handleCors, jsonResponse } from "../_shared/cors.ts";
 
 const REMINDER_DAYS = [30, 14, 7, 1];
@@ -8,7 +7,6 @@ async function notifyUser(
   supabase: ReturnType<typeof createServiceClient>,
   opts: {
     userId: string;
-    email: string | null;
     type: string;
     title: string;
     message: string;
@@ -35,17 +33,7 @@ async function notifyUser(
     message: opts.message,
     link: opts.link,
   });
-  if (error) return false;
-
-  if (opts.email) {
-    await sendEmail({
-      to: opts.email,
-      subject: opts.title,
-      html: `<p>${opts.message}</p><p><a href="${Deno.env.get("APP_URL") ?? ""}${opts.link}">View in Continuum OS</a></p>`,
-    });
-  }
-
-  return true;
+  return !error;
 }
 
 Deno.serve(async (req) => {
@@ -62,17 +50,7 @@ Deno.serve(async (req) => {
     .select("user_id")
     .in("role", ["super_admin", "consultant", "assistant"]);
 
-  const userIds = [...new Set((roleRows ?? []).map((u) => u.user_id))];
-  const { data: profileRows } = await supabase
-    .from("profiles")
-    .select("id, email")
-    .in("id", userIds);
-
-  const emailByUser = new Map((profileRows ?? []).map((p) => [p.id, p.email]));
-  const recipients = userIds.map((userId) => ({
-    userId,
-    email: emailByUser.get(userId) ?? null,
-  }));
+  const recipientIds = [...new Set((roleRows ?? []).map((u) => u.user_id))];
 
   for (const days of REMINDER_DAYS) {
     const target = new Date(today);
@@ -89,16 +67,14 @@ Deno.serve(async (req) => {
         (loan.companies as { legal_name: string } | null)?.legal_name ?? "Company";
       const title = `Payment due in ${days} day${days === 1 ? "" : "s"}`;
       const message = `${loan.lender} — ${companyName} — $${Number(loan.monthly_payment ?? 0).toFixed(2)}`;
-      const link = `/companies/${loan.company_id}`;
 
-      for (const r of recipients) {
+      for (const userId of recipientIds) {
         const created = await notifyUser(supabase, {
-          userId: r.userId,
-          email: r.email,
+          userId,
           type: "payment_reminder",
           title,
           message,
-          link,
+          link: `/companies/${loan.company_id}`,
         });
         if (created) notificationsCreated++;
       }
@@ -116,27 +92,23 @@ Deno.serve(async (req) => {
       .lte("starts_at", targetEnd.toISOString());
 
     for (const event of events ?? []) {
-      const companyName =
-        (event.companies as { legal_name: string } | null)?.legal_name ?? "";
+      const companyName = (event.companies as { legal_name: string } | null)?.legal_name ?? "";
       const title = `Reminder: ${event.title}`;
       const message = `Due in ${days} day${days === 1 ? "" : "s"}${companyName ? ` — ${companyName}` : ""}`;
-      const link = event.company_id ? `/companies/${event.company_id}` : "/calendar";
 
-      for (const r of recipients) {
+      for (const userId of recipientIds) {
         const created = await notifyUser(supabase, {
-          userId: r.userId,
-          email: r.email,
+          userId,
           type: "calendar_reminder",
           title,
           message,
-          link,
+          link: event.company_id ? `/companies/${event.company_id}` : "/calendar",
         });
         if (created) notificationsCreated++;
       }
     }
   }
 
-  // Remind about invoices due within reminder windows
   for (const days of REMINDER_DAYS) {
     const target = new Date(today);
     target.setDate(target.getDate() + days);
@@ -149,20 +121,17 @@ Deno.serve(async (req) => {
       .in("status", ["sent", "overdue"]);
 
     for (const inv of invoices ?? []) {
-      const companyName =
-        (inv.companies as { legal_name: string } | null)?.legal_name ?? "Company";
+      const companyName = (inv.companies as { legal_name: string } | null)?.legal_name ?? "Company";
       const title = `Invoice due in ${days} day${days === 1 ? "" : "s"}`;
       const message = `${inv.invoice_number} — ${companyName} — $${Number(inv.total).toFixed(2)}`;
-      const link = `/invoices`;
 
-      for (const r of recipients) {
+      for (const userId of recipientIds) {
         const created = await notifyUser(supabase, {
-          userId: r.userId,
-          email: r.email,
+          userId,
           type: "invoice_reminder",
           title,
           message,
-          link,
+          link: "/invoices",
         });
         if (created) notificationsCreated++;
       }
