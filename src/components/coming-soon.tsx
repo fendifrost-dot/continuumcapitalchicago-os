@@ -13,8 +13,8 @@ export function ComingSoon({ title, description }: { title: string; description?
           </div>
           <h3 className="text-base font-semibold">Module scaffolded</h3>
           <p className="max-w-md text-sm text-muted-foreground px-4">
-            The data layer, permissions, and navigation for this module are ready.
-            Full UI ships in the next iteration.
+            The data layer, permissions, and navigation for this module are ready. Full UI ships in
+            the next iteration.
           </p>
         </Card>
       </div>

@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
-import { Search, Bell } from "lucide-react";
+import { Bell } from "lucide-react";
 
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { GlobalSearch } from "@/components/global-search";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
@@ -14,16 +14,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="flex flex-1 flex-col min-w-0">
           <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-border bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/80">
             <SidebarTrigger />
-            <div className="relative max-w-md flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search clients, companies, transactions…"
-                className="h-9 pl-9 pr-16 bg-muted/40 border-0 focus-visible:ring-1"
-              />
-              <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border border-border bg-background px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
-                ⌘K
-              </kbd>
-            </div>
+            <GlobalSearch />
             <div className="ml-auto flex items-center gap-2">
               <Button variant="ghost" size="icon" className="relative">
                 <Bell className="h-4 w-4" />

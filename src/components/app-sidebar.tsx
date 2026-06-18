@@ -81,7 +81,9 @@ export function AppSidebar() {
           {!collapsed && (
             <div className="flex flex-col leading-tight">
               <span className="text-sm font-semibold text-sidebar-foreground">Continuum</span>
-              <span className="text-[10px] uppercase tracking-wider text-sidebar-foreground/60">Capital Group</span>
+              <span className="text-[10px] uppercase tracking-wider text-sidebar-foreground/60">
+                Capital Group
+              </span>
             </div>
           )}
         </div>

@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { CompanyFormDialog } from "@/components/company-form-dialog";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/companies")({
@@ -15,6 +16,7 @@ export const Route = createFileRoute("/_authenticated/companies")({
 
 function CompaniesList() {
   const [q, setQ] = useState("");
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["companies"],
@@ -28,8 +30,8 @@ function CompaniesList() {
     },
   });
 
-  const filtered = (data ?? []).filter((c: any) =>
-    !q || c.legal_name.toLowerCase().includes(q.toLowerCase()),
+  const filtered = (data ?? []).filter(
+    (c: any) => !q || c.legal_name.toLowerCase().includes(q.toLowerCase()),
   );
 
   return (
@@ -38,7 +40,7 @@ function CompaniesList() {
         title="Companies"
         description={`${data?.length ?? 0} total`}
         actions={
-          <Button size="sm">
+          <Button size="sm" onClick={() => setDialogOpen(true)}>
             <Plus className="h-4 w-4" /> New company
           </Button>
         }
@@ -46,7 +48,12 @@ function CompaniesList() {
       <div className="p-6 space-y-4">
         <div className="relative max-w-sm">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search companies…" className="pl-9 h-9" />
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search companies…"
+            className="pl-9 h-9"
+          />
         </div>
         <Card className="overflow-hidden">
           <table className="w-full text-sm">
@@ -60,23 +67,40 @@ function CompaniesList() {
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan={4} className="px-4 py-10 text-center text-muted-foreground">Loading…</td></tr>
-              ) : filtered.length === 0 ? (
-                <tr><td colSpan={4} className="px-4 py-10 text-center text-muted-foreground">No companies yet</td></tr>
-              ) : filtered.map((co: any) => (
-                <tr key={co.id} className="border-t hover:bg-muted/30">
-                  <td className="px-4 py-2.5 font-medium">
-                    <Link to="/companies/$id" params={{ id: co.id }} className="hover:text-accent">{co.legal_name}</Link>
+                <tr>
+                  <td colSpan={4} className="px-4 py-10 text-center text-muted-foreground">
+                    Loading…
                   </td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{co.clients?.name ?? "—"}</td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{co.industry ?? "—"}</td>
-                  <td className="px-4 py-2.5 uppercase text-xs">{co.entity_type}</td>
                 </tr>
-              ))}
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-4 py-10 text-center text-muted-foreground">
+                    No companies yet
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((co: any) => (
+                  <tr key={co.id} className="border-t hover:bg-muted/30">
+                    <td className="px-4 py-2.5 font-medium">
+                      <Link
+                        to="/companies/$id"
+                        params={{ id: co.id }}
+                        className="hover:text-accent"
+                      >
+                        {co.legal_name}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-2.5 text-muted-foreground">{co.clients?.name ?? "—"}</td>
+                    <td className="px-4 py-2.5 text-muted-foreground">{co.industry ?? "—"}</td>
+                    <td className="px-4 py-2.5 uppercase text-xs">{co.entity_type}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </Card>
       </div>
+      <CompanyFormDialog open={dialogOpen} onOpenChange={setDialogOpen} />
     </>
   );
 }

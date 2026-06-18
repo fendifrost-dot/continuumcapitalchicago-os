@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ClientFormDialog } from "@/components/client-form-dialog";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/clients")({
@@ -23,6 +24,7 @@ const statusVariant: Record<string, "default" | "secondary" | "outline" | "destr
 
 function ClientsList() {
   const [q, setQ] = useState("");
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["clients"],
@@ -36,8 +38,11 @@ function ClientsList() {
     },
   });
 
-  const filtered = (data ?? []).filter((c: any) =>
-    !q || c.name.toLowerCase().includes(q.toLowerCase()) || (c.email ?? "").toLowerCase().includes(q.toLowerCase()),
+  const filtered = (data ?? []).filter(
+    (c: any) =>
+      !q ||
+      c.name.toLowerCase().includes(q.toLowerCase()) ||
+      (c.email ?? "").toLowerCase().includes(q.toLowerCase()),
   );
 
   return (
@@ -46,7 +51,7 @@ function ClientsList() {
         title="Clients"
         description={`${data?.length ?? 0} total`}
         actions={
-          <Button size="sm">
+          <Button size="sm" onClick={() => setDialogOpen(true)}>
             <Plus className="h-4 w-4" /> New client
           </Button>
         }
@@ -74,26 +79,44 @@ function ClientsList() {
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">Loading…</td></tr>
-              ) : filtered.length === 0 ? (
-                <tr><td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">No clients yet</td></tr>
-              ) : filtered.map((c: any) => (
-                <tr key={c.id} className="border-t hover:bg-muted/30">
-                  <td className="px-4 py-2.5 font-medium">
-                    <Link to="/clients/$id" params={{ id: c.id }} className="hover:text-accent">{c.name}</Link>
+                <tr>
+                  <td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">
+                    Loading…
                   </td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{c.email ?? "—"}</td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{c.phone ?? "—"}</td>
-                  <td className="px-4 py-2.5">
-                    <Badge variant={statusVariant[c.status] ?? "secondary"} className="capitalize">{c.status}</Badge>
-                  </td>
-                  <td className="px-4 py-2.5 text-right">{c.companies?.[0]?.count ?? 0}</td>
                 </tr>
-              ))}
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">
+                    No clients yet
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((c: any) => (
+                  <tr key={c.id} className="border-t hover:bg-muted/30">
+                    <td className="px-4 py-2.5 font-medium">
+                      <Link to="/clients/$id" params={{ id: c.id }} className="hover:text-accent">
+                        {c.name}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-2.5 text-muted-foreground">{c.email ?? "—"}</td>
+                    <td className="px-4 py-2.5 text-muted-foreground">{c.phone ?? "—"}</td>
+                    <td className="px-4 py-2.5">
+                      <Badge
+                        variant={statusVariant[c.status] ?? "secondary"}
+                        className="capitalize"
+                      >
+                        {c.status}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-2.5 text-right">{c.companies?.[0]?.count ?? 0}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </Card>
       </div>
+      <ClientFormDialog open={dialogOpen} onOpenChange={setDialogOpen} />
     </>
   );
 }

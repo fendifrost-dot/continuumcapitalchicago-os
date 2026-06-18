@@ -28,7 +28,9 @@ export function useCurrentUser() {
       ]);
 
       const roles = (rolesRes.data ?? []).map((r) => r.role as AppRole);
-      const isInternal = roles.some((r) => ["super_admin", "consultant", "assistant", "bookkeeper"].includes(r));
+      const isInternal = roles.some((r) =>
+        ["super_admin", "consultant", "assistant", "bookkeeper"].includes(r),
+      );
 
       return {
         id: user.id,
