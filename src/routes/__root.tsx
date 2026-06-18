@@ -85,6 +85,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:description", content: "Secure client operations platform for financial consultants." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+      { name: "twitter:title", content: "Continuum Capital Group OS" },
+      { name: "twitter:description", content: "Secure client operations platform for financial consultants." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a405b563-8365-4c5b-a72c-b8bffbef5e85/id-preview-208e6f11--3636b8e4-5824-4ba6-8e02-4deb03fca014.lovable.app-1781812091516.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a405b563-8365-4c5b-a72c-b8bffbef5e85/id-preview-208e6f11--3636b8e4-5824-4ba6-8e02-4deb03fca014.lovable.app-1781812091516.png" },
     ],
     links: [
       {
