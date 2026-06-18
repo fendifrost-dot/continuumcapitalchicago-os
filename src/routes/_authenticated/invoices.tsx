@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { currency, formatDate } from "@/lib/format";
 import { logActivity } from "@/lib/activity";
+import { invokeEdgeFunction } from "@/lib/edge-functions";
 
 export const Route = createFileRoute("/_authenticated/invoices")({
   component: InvoicesPage,
@@ -31,7 +32,7 @@ function InvoicesPage() {
       const { data, error } = await supabase
         .from("invoices")
         .select(
-          "id, invoice_number, status, issue_date, due_date, total, company_id, companies(legal_name)",
+          "id, invoice_number, status, issue_date, due_date, total, pdf_path, company_id, companies(legal_name)",
         )
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -63,6 +64,26 @@ function InvoicesPage() {
     });
     qc.invalidateQueries({ queryKey: ["invoices"] });
     toast.success(`Invoice ${status}`);
+  };
+
+  const generatePdf = async (invoiceId: string) => {
+    const { data, error } = await invokeEdgeFunction<{ signed_url?: string }>(
+      "generate-invoice-pdf",
+      { invoice_id: invoiceId },
+    );
+    if (error) {
+      toast.error(error);
+      return;
+    }
+    qc.invalidateQueries({ queryKey: ["invoices"] });
+    toast.success("PDF generated");
+    if (data?.signed_url) window.open(data.signed_url, "_blank");
+  };
+
+  const downloadPdf = async (pdfPath: string) => {
+    const { data } = await supabase.storage.from("invoices").createSignedUrl(pdfPath, 3600);
+    if (data?.signedUrl) window.open(data.signedUrl, "_blank");
+    else toast.error("Could not open PDF");
   };
 
   return (
@@ -104,6 +125,7 @@ function InvoicesPage() {
                     issue_date: string;
                     due_date: string | null;
                     total: number;
+                    pdf_path: string | null;
                     company_id: string;
                     companies?: { legal_name: string } | null;
                   }) => (
@@ -135,7 +157,26 @@ function InvoicesPage() {
                           {inv.status}
                         </Badge>
                       </td>
-                      <td className="px-4 py-2.5 text-right">
+                      <td className="px-4 py-2.5 text-right space-x-1">
+                        {inv.pdf_path ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs"
+                            onClick={() => downloadPdf(inv.pdf_path!)}
+                          >
+                            PDF
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs"
+                            onClick={() => generatePdf(inv.id)}
+                          >
+                            Generate PDF
+                          </Button>
+                        )}
                         {inv.status === "draft" && (
                           <Button
                             size="sm"

@@ -1,19 +1,45 @@
 # Supabase Edge Functions
 
-Write edge functions in `supabase/functions/<name>/index.ts` and commit to the connected branch. Lovable syncs and deploys them to the linked Supabase project.
+Write functions in `supabase/functions/<name>/index.ts` and commit — Lovable syncs and deploys them.
+
+Shared utilities live in `_shared/`.
 
 ## Functions
 
-| Function | Purpose |
-|----------|---------|
-| `payment-reminders` | Daily check for loan payments and calendar events due in 30/14/7/1 days; creates in-app notifications for internal users |
+| Function | Trigger | Purpose |
+|----------|---------|---------|
+| `payment-reminders` | Daily cron | Loan, calendar, and invoice due-date reminders (30/14/7/1 days). In-app notifications + optional Resend email. |
+| `mark-overdue-invoices` | Daily cron | Marks `sent` invoices past `due_date` as `overdue` and logs activity. |
+| `generate-invoice-pdf` | App invoke | Builds PDF with pdf-lib, uploads to `invoices` bucket, updates `pdf_path`. Requires internal user JWT. |
+| `auth-audit` | Auth hook or app invoke | Records login/logout in `activity_logs`. |
+| `send-invitation` | App invoke (admin) | Creates invitation row and emails invite link via Resend. |
 
-## Scheduling
+## Secrets (set in Lovable / Supabase)
 
-After deploy, configure a daily cron trigger in Lovable/Supabase to invoke `payment-reminders` (e.g. `0 8 * * *` for 8 AM UTC).
+| Secret | Required | Used by |
+|--------|----------|---------|
+| `SUPABASE_URL` | Auto | All |
+| `SUPABASE_SERVICE_ROLE_KEY` | Auto | All |
+| `SUPABASE_ANON_KEY` | Auto | Authenticated invokes |
+| `RESEND_API_KEY` | Optional | Email sending |
+| `RESEND_FROM_EMAIL` | Optional | Email from address |
+| `APP_URL` | Recommended | Links in emails |
 
-## Local invoke (optional)
+## Cron schedules (configure in Lovable after deploy)
 
-```bash
-supabase functions serve payment-reminders
-```
+| Function | Schedule | Example |
+|----------|----------|---------|
+| `payment-reminders` | Daily 8 AM UTC | `0 8 * * *` |
+| `mark-overdue-invoices` | Daily 1 AM UTC | `0 1 * * *` |
+
+## Auth hook
+
+Point Supabase Auth Hook (sign-in / sign-out) at `auth-audit` for automatic login audit logging without client calls.
+
+## App integration
+
+The React app calls edge functions via `supabase.functions.invoke()`:
+
+- `generate-invoice-pdf` — after invoice creation and from Invoices page
+- `auth-audit` — after email sign-in
+- `send-invitation` — Settings page (admin only)

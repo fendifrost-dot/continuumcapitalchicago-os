@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { logActivity } from "@/lib/activity";
+import { invokeEdgeFunction } from "@/lib/edge-functions";
 
 export async function generateInvoiceFromTransactions(companyId: string, transactionIds: string[]) {
   const { data: transactions, error: txError } = await supabase
@@ -69,6 +70,9 @@ export async function generateInvoiceFromTransactions(companyId: string, transac
       transaction_count: transactions.length,
     },
   });
+
+  // Generate PDF via edge function (non-blocking failure)
+  await invokeEdgeFunction("generate-invoice-pdf", { invoice_id: invoice.id });
 
   return invoice;
 }

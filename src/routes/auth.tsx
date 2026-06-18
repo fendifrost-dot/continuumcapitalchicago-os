@@ -27,11 +27,16 @@ function AuthPage() {
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) {
       toast.error(error.message);
       return;
+    }
+    if (data.user) {
+      await supabase.functions.invoke("auth-audit", {
+        body: { type: "login", user_id: data.user.id },
+      });
     }
     toast.success("Signed in");
     navigate({ to: "/dashboard" });
