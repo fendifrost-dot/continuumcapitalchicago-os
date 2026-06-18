@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/app-shell";
 import { AccessPending } from "@/components/access-pending";
+import { StaffSetupRequired } from "@/components/staff-setup-required";
 import { useCurrentUser } from "@/lib/use-current-user";
 import { bootstrapUserSession } from "@/lib/session";
 import { isInternalOnlyPath } from "@/lib/roles";
@@ -44,7 +45,7 @@ function AuthenticatedLayout() {
   }, [refetch]);
 
   useEffect(() => {
-    if (!user || user.isPending) return;
+    if (!user || user.isPending || user.needsStaffSetup) return;
     if (user.isClient && isInternalOnlyPath(pathname)) {
       navigate({ to: "/dashboard" });
     }
@@ -56,6 +57,10 @@ function AuthenticatedLayout() {
         Loading workspace…
       </div>
     );
+  }
+
+  if (user?.needsStaffSetup) {
+    return <StaffSetupRequired email={user.email} />;
   }
 
   if (user?.isPending) {

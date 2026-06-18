@@ -10,10 +10,14 @@ export interface CurrentUser {
   fullName: string | null;
   avatarUrl: string | null;
   roles: AppRole[];
+  /** Has an internal role in the database (RLS will allow staff operations). */
   isInternal: boolean;
   isAdmin: boolean;
   isClient: boolean;
+  /** Signed in but not linked to a client and not staff. */
   isPending: boolean;
+  /** Firm email detected but DB roles not assigned yet — RLS blocks all data. */
+  needsStaffSetup: boolean;
   clientIds: string[];
 }
 
@@ -36,12 +40,16 @@ export function useCurrentUser() {
       const roles = (rolesRes.data ?? []).map((r) => r.role as AppRole);
       const clientIds = (portalRes.data ?? []).map((r) => r.client_id);
 
-      const isInternal =
-        isInternalEmail(email) ||
-        roles.some((r) => ["super_admin", "consultant", "assistant", "bookkeeper"].includes(r));
+      const hasInternalRole = roles.some((r) =>
+        ["super_admin", "consultant", "assistant", "bookkeeper"].includes(r),
+      );
+      const isClient = roles.includes("client") && !hasInternalRole;
+      const isFirmEmail = isInternalEmail(email);
 
-      const isClient = !isInternal && roles.includes("client");
-      const isPending = !isInternal && !isClient;
+      // RLS uses database roles only — do not infer staff access from email alone.
+      const isInternal = hasInternalRole;
+      const needsStaffSetup = isFirmEmail && !hasInternalRole && !isClient;
+      const isPending = !isInternal && !isClient && !needsStaffSetup;
 
       return {
         id: user.id,
@@ -50,9 +58,10 @@ export function useCurrentUser() {
         avatarUrl: profileRes.data?.avatar_url ?? null,
         roles,
         isInternal,
-        isAdmin: roles.includes("super_admin") || isInternalEmail(email),
+        isAdmin: roles.includes("super_admin"),
         isClient,
         isPending,
+        needsStaffSetup,
         clientIds,
       };
     },

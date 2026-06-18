@@ -9,7 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ClientFormDialog } from "@/components/client-form-dialog";
+import { QueryErrorState } from "@/components/query-error-state";
 import { supabase } from "@/integrations/supabase/client";
+import { formatSupabaseError } from "@/lib/supabase-errors";
 import { useCurrentUser } from "@/lib/use-current-user";
 
 export const Route = createFileRoute("/_authenticated/clients")({
@@ -28,7 +30,7 @@ function ClientsList() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const { data: user } = useCurrentUser();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ["clients"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -61,6 +63,9 @@ function ClientsList() {
         }
       />
       <div className="p-6 space-y-4">
+        {isError && (
+          <QueryErrorState message={formatSupabaseError((error as Error).message)} />
+        )}
         <div className="relative max-w-sm">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input

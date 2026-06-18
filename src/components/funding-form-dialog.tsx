@@ -23,6 +23,7 @@ import {
 import { CompanySelect } from "@/components/company-select";
 import { supabase } from "@/integrations/supabase/client";
 import { logActivity } from "@/lib/activity";
+import { formatSupabaseError } from "@/lib/supabase-errors";
 
 const stages = ["researching", "applied", "under_review", "approved", "funded", "denied", "closed"];
 
@@ -61,7 +62,7 @@ export function FundingFormDialog({
       .select("id")
       .single();
     if (error) {
-      toast.error(error.message);
+      toast.error(formatSupabaseError(error.message));
       setSaving(false);
       return;
     }

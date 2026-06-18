@@ -16,6 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { CompanySelect } from "@/components/company-select";
 import { supabase } from "@/integrations/supabase/client";
 import { logActivity } from "@/lib/activity";
+import { formatSupabaseError } from "@/lib/supabase-errors";
 
 export function LoanFormDialog({
   open,
@@ -54,7 +55,7 @@ export function LoanFormDialog({
       .select("id")
       .single();
     if (error) {
-      toast.error(error.message);
+      toast.error(formatSupabaseError(error.message));
       setSaving(false);
       return;
     }

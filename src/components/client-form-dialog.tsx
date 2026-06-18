@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { logActivity } from "@/lib/activity";
+import { formatSupabaseError } from "@/lib/supabase-errors";
 
 export function ClientFormDialog({
   open,
@@ -64,7 +65,7 @@ export function ClientFormDialog({
     if (client) {
       const { error } = await supabase.from("clients").update(payload).eq("id", client.id);
       if (error) {
-        toast.error(error.message);
+        toast.error(formatSupabaseError(error.message));
         setSaving(false);
         return;
       }
@@ -84,7 +85,7 @@ export function ClientFormDialog({
         .select("id")
         .single();
       if (error) {
-        toast.error(error.message);
+        toast.error(formatSupabaseError(error.message));
         setSaving(false);
         return;
       }

@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { logActivity } from "@/lib/activity";
+import { formatSupabaseError } from "@/lib/supabase-errors";
 
 const categories = ["banking", "irs", "state", "payroll", "software", "utility", "other"];
 
@@ -58,7 +59,7 @@ export function CredentialFormDialog({
       .select("id")
       .single();
     if (error) {
-      toast.error(error.message);
+      toast.error(formatSupabaseError(error.message));
       setSaving(false);
       return;
     }

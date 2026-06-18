@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { logActivity } from "@/lib/activity";
+import { formatSupabaseError } from "@/lib/supabase-errors";
 
 const folders = [
   "Formation",
@@ -51,7 +52,7 @@ export function DocumentUpload({
     const path = `${companyId ?? clientId}/${folder}/${Date.now()}-${file.name}`;
     const { error: uploadError } = await supabase.storage.from("documents").upload(path, file);
     if (uploadError) {
-      toast.error(uploadError.message);
+      toast.error(formatSupabaseError(uploadError.message));
       setUploading(false);
       return;
     }
@@ -71,7 +72,7 @@ export function DocumentUpload({
       .select("id")
       .single();
     if (error) {
-      toast.error(error.message);
+      toast.error(formatSupabaseError(error.message));
       setUploading(false);
       return;
     }

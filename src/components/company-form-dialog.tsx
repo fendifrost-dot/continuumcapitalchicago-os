@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { logActivity } from "@/lib/activity";
+import { formatSupabaseError } from "@/lib/supabase-errors";
 import { useClientsList } from "@/components/client-form-dialog";
 
 const entityTypes = ["llc", "c_corp", "s_corp", "sole_prop", "partnership", "nonprofit", "other"];
@@ -63,7 +64,7 @@ export function CompanyFormDialog({
       .select("id")
       .single();
     if (error) {
-      toast.error(error.message);
+      toast.error(formatSupabaseError(error.message));
       setSaving(false);
       return;
     }
