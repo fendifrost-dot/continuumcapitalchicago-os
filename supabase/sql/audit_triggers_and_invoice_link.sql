@@ -1,9 +1,10 @@
 
--- Link invoice items to source transactions
+-- Run in Supabase SQL Editor (Lovable)
+-- Links invoice items to source transactions, adds audit triggers, ensures storage buckets.
+
 ALTER TABLE public.invoice_items
   ADD COLUMN IF NOT EXISTS transaction_id UUID REFERENCES public.transactions(id) ON DELETE SET NULL;
 
--- Centralized audit logging via database triggers
 CREATE OR REPLACE FUNCTION public.audit_log_mutation()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
@@ -42,7 +43,6 @@ BEGIN
     v_metadata := to_jsonb(OLD);
   END IF;
 
-  -- Resolve company_id / client_id from row
   IF TG_OP = 'DELETE' THEN
     IF TG_TABLE_NAME = 'clients' THEN
       v_client_id := OLD.id;
@@ -77,7 +77,6 @@ $$;
 
 REVOKE EXECUTE ON FUNCTION public.audit_log_mutation() FROM PUBLIC, anon, authenticated;
 
--- Apply audit triggers to core tables
 DO $$
 DECLARE t TEXT;
 BEGIN
@@ -95,7 +94,6 @@ BEGIN
 END;
 $$;
 
--- Storage buckets (idempotent)
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('documents', 'documents', false), ('invoices', 'invoices', false), ('avatars', 'avatars', true)
 ON CONFLICT (id) DO NOTHING;

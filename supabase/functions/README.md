@@ -1,7 +1,19 @@
 # Supabase Edge Functions
 
-Edge functions for this project are created and deployed through **Lovable**, not from this GitHub repo.
+Write edge functions in `supabase/functions/<name>/index.ts` and commit to the connected branch. Lovable syncs and deploys them to the linked Supabase project.
 
-The payment-reminders automation (daily checks for loan due dates and calendar events at 30/14/7/1 days) should be implemented in Lovable's Supabase integration when you're ready.
+## Functions
 
-Database schema changes belong in `supabase/migrations/` and sync to Lovable when pushed to the connected branch.
+| Function | Purpose |
+|----------|---------|
+| `payment-reminders` | Daily check for loan payments and calendar events due in 30/14/7/1 days; creates in-app notifications for internal users |
+
+## Scheduling
+
+After deploy, configure a daily cron trigger in Lovable/Supabase to invoke `payment-reminders` (e.g. `0 8 * * *` for 8 AM UTC).
+
+## Local invoke (optional)
+
+```bash
+supabase functions serve payment-reminders
+```
