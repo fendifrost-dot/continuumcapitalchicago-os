@@ -75,13 +75,22 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
       <SidebarHeader className="px-4 py-5">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground font-bold text-sm">
-            C
+          <div
+            className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/20 font-bold text-base tracking-tighter"
+            style={{
+              backgroundImage:
+                "linear-gradient(135deg, #FDE68A 0%, #D4AF37 45%, #8E6E37 100%)",
+              color: "#2a1e00",
+              boxShadow:
+                "0 0 18px rgba(212,175,55,0.35), inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -1px 0 rgba(0,0,0,0.25)",
+            }}
+          >
+            CC
           </div>
           {!collapsed && (
             <div className="flex flex-col leading-tight">
               <span className="text-sm font-semibold text-sidebar-foreground">Continuum</span>
-              <span className="text-[10px] uppercase tracking-wider text-sidebar-foreground/60">Capital Group</span>
+              <span className="text-[10px] uppercase tracking-widest font-semibold text-[#D4AF37]">Capital Group</span>
             </div>
           )}
         </div>
