@@ -454,6 +454,7 @@ export type Database = {
           id: string;
           invoice_id: string;
           quantity: number;
+          transaction_id: string | null;
           unit_price: number;
         };
         Insert: {
@@ -463,6 +464,7 @@ export type Database = {
           id?: string;
           invoice_id: string;
           quantity?: number;
+          transaction_id?: string | null;
           unit_price?: number;
         };
         Update: {
@@ -472,6 +474,7 @@ export type Database = {
           id?: string;
           invoice_id?: string;
           quantity?: number;
+          transaction_id?: string | null;
           unit_price?: number;
         };
         Relationships: [
@@ -480,6 +483,13 @@ export type Database = {
             columns: ["invoice_id"];
             isOneToOne: false;
             referencedRelation: "invoices";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "invoice_items_transaction_id_fkey";
+            columns: ["transaction_id"];
+            isOneToOne: false;
+            referencedRelation: "transactions";
             referencedColumns: ["id"];
           },
         ];

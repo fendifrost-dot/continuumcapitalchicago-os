@@ -1,11 +1,10 @@
+import type { ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, TrendingUp, AlertCircle, Clock, CheckCircle2 } from "lucide-react";
+import { Plus, FileText } from "lucide-react";
 
 import { PageHeader } from "@/components/app-shell";
 import { ClientDashboard } from "@/components/client-dashboard";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { currency } from "@/lib/format";
@@ -15,9 +14,20 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
 });
 
+const PIPELINE_ORDER: Array<{ key: string; label: string }> = [
+  { key: "researching", label: "Researching" },
+  { key: "applied", label: "Applied" },
+  { key: "under_review", label: "Under Review" },
+  { key: "approved", label: "Approved" },
+  { key: "funded", label: "Funded" },
+  { key: "denied", label: "Denied" },
+  { key: "closed", label: "Closed" },
+];
+
 function Dashboard() {
   const { data: user } = useCurrentUser();
   if (user?.isClient) return <ClientDashboard />;
+
   const { data: stats } = useQuery({
     queryKey: ["dashboard-stats"],
     queryFn: async () => {
@@ -64,6 +74,7 @@ function Dashboard() {
 
   const outstandingTotal =
     stats?.invoices.reduce((s: number, i: any) => s + Number(i.total ?? 0), 0) ?? 0;
+  const fundedCount = stats?.stages.funded ?? 0;
 
   return (
     <>
@@ -72,136 +83,139 @@ function Dashboard() {
         description="Firm-wide visibility across clients, companies, and activity"
         actions={
           user?.isInternal ? (
-            <Button size="sm" variant="outline" disabled>
+            <Button
+              size="sm"
+              className="rounded-xl font-bold text-[#2a1e00] border-0 hover:brightness-110"
+              style={{
+                backgroundImage: "linear-gradient(90deg, #D4AF37 0%, #8E6E37 100%)",
+                boxShadow: "0 4px 20px rgba(212,175,55,0.25)",
+              }}
+            >
               <Plus className="h-4 w-4" /> Quick action
             </Button>
           ) : undefined
         }
       />
-      <div className="p-6 space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <KpiCard
-            icon={TrendingUp}
-            label="Outstanding"
-            value={currency(outstandingTotal)}
-            accent="text-accent"
-          />
-          <KpiCard
-            icon={Clock}
-            label="Upcoming payments"
-            value={String(stats?.loans.length ?? 0)}
-          />
-          <KpiCard
-            icon={AlertCircle}
-            label="Open invoices"
-            value={String(stats?.invoices.length ?? 0)}
-          />
-          <KpiCard
-            icon={CheckCircle2}
-            label="Funded YTD"
-            value={String(stats?.stages.funded ?? 0)}
-          />
+      <div className="p-8 space-y-8 bg-[#050505] min-h-[calc(100vh-3.5rem)]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <KpiCard label="Outstanding" value={currency(outstandingTotal)} highlight />
+          <KpiCard label="Upcoming Payments" value={String(stats?.loans.length ?? 0)} />
+          <KpiCard label="Open Invoices" value={String(stats?.invoices.length ?? 0)} />
+          <KpiCard label="Funded YTD" value={String(fundedCount)} highlight />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <Card className="lg:col-span-2">
-            <CardHeader className="flex flex-row items-center justify-between border-b">
-              <CardTitle className="text-sm font-semibold">Outstanding Invoices</CardTitle>
-              <Badge variant="secondary">{stats?.invoices.length ?? 0}</Badge>
-            </CardHeader>
-            <CardContent className="p-0">
-              {stats?.invoices.length ? (
-                <table className="w-full text-sm">
-                  <thead className="text-xs uppercase tracking-wider text-muted-foreground">
-                    <tr className="border-b">
-                      <th className="text-left px-4 py-2 font-medium">Invoice</th>
-                      <th className="text-left px-4 py-2 font-medium">Company</th>
-                      <th className="text-left px-4 py-2 font-medium">Due</th>
-                      <th className="text-right px-4 py-2 font-medium">Amount</th>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <Panel className="lg:col-span-8">
+            <PanelHeader
+              title="Outstanding Invoices"
+              right={
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold border bg-[#D4AF37]/10 text-[#D4AF37] border-[#D4AF37]/20">
+                  {stats?.invoices.length ?? 0} Active
+                </span>
+              }
+            />
+            {stats?.invoices.length ? (
+              <table className="w-full text-sm">
+                <thead className="text-[10px] uppercase tracking-widest text-white/40">
+                  <tr className="border-b border-white/5">
+                    <th className="text-left px-6 py-3 font-bold">Invoice</th>
+                    <th className="text-left px-6 py-3 font-bold">Company</th>
+                    <th className="text-left px-6 py-3 font-bold">Due</th>
+                    <th className="text-right px-6 py-3 font-bold">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.invoices.map((inv: any) => (
+                    <tr
+                      key={inv.id}
+                      className="border-b border-white/5 last:border-0 hover:bg-white/[0.03]"
+                    >
+                      <td className="px-6 py-3 font-mono text-xs text-[#D4AF37]">
+                        {inv.invoice_number}
+                      </td>
+                      <td className="px-6 py-3 text-white/80">{inv.companies?.legal_name ?? "—"}</td>
+                      <td className="px-6 py-3 text-white/40">{inv.due_date ?? "—"}</td>
+                      <td className="px-6 py-3 text-right font-semibold text-white">
+                        {currency(inv.total)}
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {stats.invoices.map((inv: any) => (
-                      <tr key={inv.id} className="border-b last:border-0 hover:bg-muted/30">
-                        <td className="px-4 py-2.5 font-mono text-xs">{inv.invoice_number}</td>
-                        <td className="px-4 py-2.5">{inv.companies?.legal_name ?? "—"}</td>
-                        <td className="px-4 py-2.5 text-muted-foreground">{inv.due_date ?? "—"}</td>
-                        <td className="px-4 py-2.5 text-right font-medium">
-                          {currency(inv.total)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : (
-                <EmptyState message="No outstanding invoices" />
-              )}
-            </CardContent>
-          </Card>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <EmptyState icon={<FileText className="w-8 h-8" />} message="All accounts current" />
+            )}
+          </Panel>
 
-          <Card>
-            <CardHeader className="border-b">
-              <CardTitle className="text-sm font-semibold">Funding Pipeline</CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 space-y-2.5">
-              {stats &&
-                Object.entries(stats.stages).map(([stage, count]) => (
-                  <div key={stage} className="flex items-center justify-between text-sm">
-                    <span className="capitalize text-muted-foreground">
-                      {stage.replace("_", " ")}
+          <Panel className="lg:col-span-4">
+            <PanelHeader title="Funding Pipeline" />
+            <div className="p-4 space-y-1">
+              {PIPELINE_ORDER.map(({ key, label }) => {
+                const count = stats?.stages[key] ?? 0;
+                const dim = count === 0;
+                return (
+                  <div
+                    key={key}
+                    className="flex items-center justify-between p-3 rounded-xl hover:bg-white/[0.04] transition-colors group"
+                  >
+                    <span className="text-xs text-white/60 group-hover:text-white transition-colors">
+                      {label}
                     </span>
-                    <span className="font-semibold">{count}</span>
+                    <span
+                      className={`text-xs font-bold ${dim ? "text-white/30" : "text-[#D4AF37]"}`}
+                    >
+                      {count}
+                    </span>
                   </div>
+                );
+              })}
+            </div>
+          </Panel>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <Panel>
+            <PanelHeader title="Recent Activity" />
+            {stats?.activity.length ? (
+              <ul className="divide-y divide-white/5">
+                {stats.activity.map((a: any) => (
+                  <li key={a.id} className="px-6 py-3 text-sm">
+                    <div className="text-white/90">{a.summary}</div>
+                    <div className="mt-0.5 text-xs text-white/40">
+                      {a.actor_name ?? "System"} · {new Date(a.created_at).toLocaleString()}
+                    </div>
+                  </li>
                 ))}
-            </CardContent>
-          </Card>
+              </ul>
+            ) : (
+              <EmptyState message="System monitoring active. No recent changes." />
+            )}
+          </Panel>
 
-          <Card className="lg:col-span-2">
-            <CardHeader className="border-b">
-              <CardTitle className="text-sm font-semibold">Recent Activity</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              {stats?.activity.length ? (
-                <ul className="divide-y">
-                  {stats.activity.map((a: any) => (
-                    <li key={a.id} className="px-4 py-3 text-sm">
-                      <div className="text-foreground">{a.summary}</div>
-                      <div className="mt-0.5 text-xs text-muted-foreground">
-                        {a.actor_name ?? "System"} · {new Date(a.created_at).toLocaleString()}
+          <Panel>
+            <PanelHeader title="Upcoming Payments" />
+            {stats?.loans.length ? (
+              <ul className="divide-y divide-white/5">
+                {stats.loans.map((l: any) => (
+                  <li key={l.id} className="px-6 py-3 text-sm flex items-center justify-between">
+                    <div>
+                      <div className="font-medium text-white">
+                        {l.companies?.legal_name ?? l.lender}
                       </div>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <EmptyState message="No recent activity" />
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="border-b">
-              <CardTitle className="text-sm font-semibold">Upcoming Payments</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              {stats?.loans.length ? (
-                <ul className="divide-y">
-                  {stats.loans.map((l: any) => (
-                    <li key={l.id} className="px-4 py-3 text-sm flex items-center justify-between">
-                      <div>
-                        <div className="font-medium">{l.companies?.legal_name ?? l.lender}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {l.lender} · {l.next_due_date}
-                        </div>
+                      <div className="text-xs text-white/40">
+                        {l.lender} · {l.next_due_date}
                       </div>
-                      <div className="font-medium">{currency(l.monthly_payment)}</div>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <EmptyState message="No upcoming payments" />
-              )}
-            </CardContent>
-          </Card>
+                    </div>
+                    <div className="font-semibold text-[#D4AF37]">
+                      {currency(l.monthly_payment)}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <EmptyState message="No payments scheduled" />
+            )}
+          </Panel>
         </div>
       </div>
     </>
@@ -209,29 +223,64 @@ function Dashboard() {
 }
 
 function KpiCard({
-  icon: Icon,
   label,
   value,
-  accent,
+  highlight,
 }: {
-  icon: any;
   label: string;
   value: string;
-  accent?: string;
+  highlight?: boolean;
 }) {
   return (
-    <Card>
-      <CardContent className="p-5">
-        <div className="flex items-center justify-between">
-          <span className="text-xs uppercase tracking-wider text-muted-foreground">{label}</span>
-          <Icon className={`h-4 w-4 ${accent ?? "text-muted-foreground"}`} />
-        </div>
-        <div className="mt-3 text-2xl font-semibold tracking-tight">{value}</div>
-      </CardContent>
-    </Card>
+    <div className="relative group">
+      {highlight && (
+        <div className="pointer-events-none absolute -inset-0.5 rounded-2xl bg-gradient-to-br from-[#D4AF37]/40 to-transparent blur opacity-0 group-hover:opacity-100 transition duration-500" />
+      )}
+      <div className="relative bg-[#0d0d0d] p-6 rounded-2xl border border-white/5 shadow-2xl overflow-hidden">
+        {highlight && (
+          <div className="pointer-events-none absolute -right-4 -top-4 w-20 h-20 bg-[#D4AF37]/10 rounded-full blur-2xl" />
+        )}
+        <p
+          className={`text-[10px] font-bold uppercase tracking-widest mb-2 ${
+            highlight ? "text-[#D4AF37]" : "text-white/40"
+          }`}
+        >
+          {label}
+        </p>
+        <div className="text-2xl font-bold text-white tracking-tight">{value}</div>
+      </div>
+    </div>
   );
 }
 
-function EmptyState({ message }: { message: string }) {
-  return <div className="px-4 py-10 text-center text-sm text-muted-foreground">{message}</div>;
+function Panel({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return (
+    <div
+      className={`bg-[#0d0d0d] rounded-2xl border border-white/5 shadow-xl overflow-hidden ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+function PanelHeader({ title, right }: { title: string; right?: ReactNode }) {
+  return (
+    <div className="p-6 border-b border-white/5 flex items-center justify-between">
+      <h3 className="text-sm font-semibold text-white/80">{title}</h3>
+      {right}
+    </div>
+  );
+}
+
+function EmptyState({ message, icon }: { message: string; icon?: ReactNode }) {
+  return (
+    <div className="p-12 flex flex-col items-center justify-center text-center">
+      {icon && (
+        <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4 text-white/20">
+          {icon}
+        </div>
+      )}
+      <p className="text-sm text-white/30">{message}</p>
+    </div>
+  );
 }

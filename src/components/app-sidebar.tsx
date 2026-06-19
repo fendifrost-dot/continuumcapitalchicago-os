@@ -89,17 +89,23 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
       <SidebarHeader className="border-b border-sidebar-border/60 px-4 py-5">
-        <div className="flex items-center gap-3">
-          <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground font-serif text-lg font-bold shadow-sm">
-            C
-            <span className="absolute -bottom-0.5 left-1 right-1 h-0.5 rounded-full bg-sidebar-primary/80" />
+        <div className="flex items-center gap-2.5">
+          <div
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/20 font-bold text-base tracking-tighter"
+            style={{
+              backgroundImage:
+                "linear-gradient(135deg, #FDE68A 0%, #D4AF37 45%, #8E6E37 100%)",
+              color: "#2a1e00",
+              boxShadow:
+                "0 0 18px rgba(212,175,55,0.35), inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -1px 0 rgba(0,0,0,0.25)",
+            }}
+          >
+            CC
           </div>
           {!collapsed && (
             <div className="flex min-w-0 flex-col leading-tight">
-              <span className="truncate font-serif text-sm font-semibold text-sidebar-foreground">
-                Continuum Capital
-              </span>
-              <span className="text-[10px] uppercase tracking-[0.14em] text-sidebar-foreground/55">
+              <span className="truncate text-sm font-semibold text-sidebar-foreground">Continuum</span>
+              <span className="text-[10px] uppercase tracking-widest font-semibold text-[#D4AF37]">
                 {user?.isClient ? "Client portal" : "Chicago · Operations"}
               </span>
             </div>
