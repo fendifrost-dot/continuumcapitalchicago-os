@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedTransactionsRouteImport } from './routes/_authenticated/transactions'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedPaymentsRouteImport } from './routes/_authenticated/payments'
 import { Route as AuthenticatedLoansRouteImport } from './routes/_authenticated/loans'
 import { Route as AuthenticatedInvoicesRouteImport } from './routes/_authenticated/invoices'
 import { Route as AuthenticatedFundingRouteImport } from './routes/_authenticated/funding'
@@ -23,6 +24,7 @@ import { Route as AuthenticatedCompaniesRouteImport } from './routes/_authentica
 import { Route as AuthenticatedClientsRouteImport } from './routes/_authenticated/clients'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
 import { Route as AuthenticatedActivityRouteImport } from './routes/_authenticated/activity'
+import { Route as AuthenticatedAccountsRouteImport } from './routes/_authenticated/accounts'
 import { Route as AuthenticatedCompaniesIdRouteImport } from './routes/_authenticated/companies.$id'
 import { Route as AuthenticatedClientsIdRouteImport } from './routes/_authenticated/clients.$id'
 
@@ -49,6 +51,11 @@ const AuthenticatedTransactionsRoute =
 const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPaymentsRoute = AuthenticatedPaymentsRouteImport.update({
+  id: '/payments',
+  path: '/payments',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedLoansRoute = AuthenticatedLoansRouteImport.update({
@@ -96,6 +103,11 @@ const AuthenticatedActivityRoute = AuthenticatedActivityRouteImport.update({
   path: '/activity',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAccountsRoute = AuthenticatedAccountsRouteImport.update({
+  id: '/accounts',
+  path: '/accounts',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedCompaniesIdRoute =
   AuthenticatedCompaniesIdRouteImport.update({
     id: '/$id',
@@ -111,6 +123,7 @@ const AuthenticatedClientsIdRoute = AuthenticatedClientsIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/accounts': typeof AuthenticatedAccountsRoute
   '/activity': typeof AuthenticatedActivityRoute
   '/calendar': typeof AuthenticatedCalendarRoute
   '/clients': typeof AuthenticatedClientsRouteWithChildren
@@ -120,6 +133,7 @@ export interface FileRoutesByFullPath {
   '/funding': typeof AuthenticatedFundingRoute
   '/invoices': typeof AuthenticatedInvoicesRoute
   '/loans': typeof AuthenticatedLoansRoute
+  '/payments': typeof AuthenticatedPaymentsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/transactions': typeof AuthenticatedTransactionsRoute
   '/clients/$id': typeof AuthenticatedClientsIdRoute
@@ -128,6 +142,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/accounts': typeof AuthenticatedAccountsRoute
   '/activity': typeof AuthenticatedActivityRoute
   '/calendar': typeof AuthenticatedCalendarRoute
   '/clients': typeof AuthenticatedClientsRouteWithChildren
@@ -137,6 +152,7 @@ export interface FileRoutesByTo {
   '/funding': typeof AuthenticatedFundingRoute
   '/invoices': typeof AuthenticatedInvoicesRoute
   '/loans': typeof AuthenticatedLoansRoute
+  '/payments': typeof AuthenticatedPaymentsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/transactions': typeof AuthenticatedTransactionsRoute
   '/clients/$id': typeof AuthenticatedClientsIdRoute
@@ -147,6 +163,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/accounts': typeof AuthenticatedAccountsRoute
   '/_authenticated/activity': typeof AuthenticatedActivityRoute
   '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
   '/_authenticated/clients': typeof AuthenticatedClientsRouteWithChildren
@@ -156,6 +173,7 @@ export interface FileRoutesById {
   '/_authenticated/funding': typeof AuthenticatedFundingRoute
   '/_authenticated/invoices': typeof AuthenticatedInvoicesRoute
   '/_authenticated/loans': typeof AuthenticatedLoansRoute
+  '/_authenticated/payments': typeof AuthenticatedPaymentsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/transactions': typeof AuthenticatedTransactionsRoute
   '/_authenticated/clients/$id': typeof AuthenticatedClientsIdRoute
@@ -166,6 +184,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/accounts'
     | '/activity'
     | '/calendar'
     | '/clients'
@@ -175,6 +194,7 @@ export interface FileRouteTypes {
     | '/funding'
     | '/invoices'
     | '/loans'
+    | '/payments'
     | '/settings'
     | '/transactions'
     | '/clients/$id'
@@ -183,6 +203,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/accounts'
     | '/activity'
     | '/calendar'
     | '/clients'
@@ -192,6 +213,7 @@ export interface FileRouteTypes {
     | '/funding'
     | '/invoices'
     | '/loans'
+    | '/payments'
     | '/settings'
     | '/transactions'
     | '/clients/$id'
@@ -201,6 +223,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/accounts'
     | '/_authenticated/activity'
     | '/_authenticated/calendar'
     | '/_authenticated/clients'
@@ -210,6 +233,7 @@ export interface FileRouteTypes {
     | '/_authenticated/funding'
     | '/_authenticated/invoices'
     | '/_authenticated/loans'
+    | '/_authenticated/payments'
     | '/_authenticated/settings'
     | '/_authenticated/transactions'
     | '/_authenticated/clients/$id'
@@ -257,6 +281,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/payments': {
+      id: '/_authenticated/payments'
+      path: '/payments'
+      fullPath: '/payments'
+      preLoaderRoute: typeof AuthenticatedPaymentsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/loans': {
@@ -322,6 +353,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedActivityRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/accounts': {
+      id: '/_authenticated/accounts'
+      path: '/accounts'
+      fullPath: '/accounts'
+      preLoaderRoute: typeof AuthenticatedAccountsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/companies/$id': {
       id: '/_authenticated/companies/$id'
       path: '/$id'
@@ -365,6 +403,7 @@ const AuthenticatedCompaniesRouteWithChildren =
   )
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAccountsRoute: typeof AuthenticatedAccountsRoute
   AuthenticatedActivityRoute: typeof AuthenticatedActivityRoute
   AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRoute
   AuthenticatedClientsRoute: typeof AuthenticatedClientsRouteWithChildren
@@ -374,11 +413,13 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedFundingRoute: typeof AuthenticatedFundingRoute
   AuthenticatedInvoicesRoute: typeof AuthenticatedInvoicesRoute
   AuthenticatedLoansRoute: typeof AuthenticatedLoansRoute
+  AuthenticatedPaymentsRoute: typeof AuthenticatedPaymentsRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedTransactionsRoute: typeof AuthenticatedTransactionsRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAccountsRoute: AuthenticatedAccountsRoute,
   AuthenticatedActivityRoute: AuthenticatedActivityRoute,
   AuthenticatedCalendarRoute: AuthenticatedCalendarRoute,
   AuthenticatedClientsRoute: AuthenticatedClientsRouteWithChildren,
@@ -388,6 +429,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedFundingRoute: AuthenticatedFundingRoute,
   AuthenticatedInvoicesRoute: AuthenticatedInvoicesRoute,
   AuthenticatedLoansRoute: AuthenticatedLoansRoute,
+  AuthenticatedPaymentsRoute: AuthenticatedPaymentsRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedTransactionsRoute: AuthenticatedTransactionsRoute,
 }
@@ -403,3 +445,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

@@ -7,6 +7,8 @@ import {
   FileText,
   Landmark,
   Wallet,
+  CreditCard,
+  KeyRound,
   Calendar,
   FolderOpen,
   Activity,
@@ -49,14 +51,17 @@ const internalItems: NavItem[] = [
   { title: "Invoices", url: "/invoices", icon: FileText },
   { title: "Funding", url: "/funding", icon: Landmark },
   { title: "Loans", url: "/loans", icon: Wallet, internalOnly: true },
+  { title: "Payments", url: "/payments", icon: CreditCard, internalOnly: true },
   { title: "Calendar", url: "/calendar", icon: Calendar },
   { title: "Documents", url: "/documents", icon: FolderOpen },
+  { title: "Accounts", url: "/accounts", icon: KeyRound },
   { title: "Activity", url: "/activity", icon: Activity, internalOnly: true },
 ];
 
 const clientItems: NavItem[] = [
   { title: "Overview", url: "/dashboard", icon: LayoutDashboard, clientOnly: true },
   { title: "My companies", url: "/companies", icon: Building2, clientOnly: true },
+  { title: "Accounts", url: "/accounts", icon: KeyRound, clientOnly: true },
   { title: "Documents", url: "/documents", icon: FolderOpen, clientOnly: true },
   { title: "Invoices", url: "/invoices", icon: FileText, clientOnly: true },
   { title: "Funding", url: "/funding", icon: Landmark, clientOnly: true },

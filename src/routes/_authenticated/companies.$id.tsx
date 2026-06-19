@@ -11,6 +11,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CredentialFormDialog } from "@/components/credential-form-dialog";
+import { AccountsPanel } from "@/components/accounts-panel";
+import { PaymentScheduleDialog } from "@/components/payment-schedule-dialog";
+import { recordScheduledPayment, FREQUENCY_LABELS } from "@/lib/payments";
 import { TransactionFormDialog } from "@/components/transaction-form-dialog";
 import { FundingFormDialog } from "@/components/funding-form-dialog";
 import { LoanFormDialog } from "@/components/loan-form-dialog";
@@ -38,6 +41,7 @@ function CompanyDetail() {
   const [credDialog, setCredDialog] = useState(false);
   const [fundDialog, setFundDialog] = useState(false);
   const [loanDialog, setLoanDialog] = useState(false);
+  const [scheduleDialog, setScheduleDialog] = useState(false);
   const [selectedTx, setSelectedTx] = useState<Set<string>>(new Set());
   const qc = useQueryClient();
 
@@ -112,6 +116,31 @@ function CompanyDetail() {
     },
   });
 
+  const { data: schedules } = useQuery({
+    queryKey: ["company-payment-schedules", id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("payment_schedules")
+        .select(
+          "id, company_id, name, payee, amount, frequency, method, category, next_run_date, active, memo, last_posted_on",
+        )
+        .eq("company_id", id)
+        .order("next_run_date", { ascending: true });
+      return data ?? [];
+    },
+  });
+
+  const handleRecordPayment = async (s: NonNullable<typeof schedules>[number]) => {
+    try {
+      const res = await recordScheduledPayment(s);
+      toast.success(`Recorded ${currency(s.amount)} · next ${formatDate(res.nextRunDate)}`);
+      qc.invalidateQueries({ queryKey: ["company-payment-schedules", id] });
+      qc.invalidateQueries({ queryKey: ["company-transactions", id] });
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to record payment");
+    }
+  };
+
   const billableUninvoiced = (transactions ?? []).filter((t) => t.billable && !t.invoice_id);
 
   const handleGenerateInvoice = async () => {
@@ -147,10 +176,13 @@ function CompanyDetail() {
         <Tabs defaultValue="overview" className="space-y-4">
           <TabsList className="flex-wrap">
             <TabsTrigger value="overview">Overview</TabsTrigger>
-            {canSeeCredentials && <TabsTrigger value="credentials">Credentials</TabsTrigger>}
+            {(canSeeCredentials || user?.isClient) && (
+              <TabsTrigger value="accounts">Accounts</TabsTrigger>
+            )}
             {isStaff && <TabsTrigger value="transactions">Transactions</TabsTrigger>}
             <TabsTrigger value="funding">Funding</TabsTrigger>
             {isStaff && <TabsTrigger value="loans">Loans</TabsTrigger>}
+            {isStaff && <TabsTrigger value="payments">Payments</TabsTrigger>}
             <TabsTrigger value="calendar">Calendar</TabsTrigger>
             <TabsTrigger value="documents">Documents</TabsTrigger>
             {isStaff && <TabsTrigger value="audit">Audit Trail</TabsTrigger>}
@@ -226,18 +258,20 @@ function CompanyDetail() {
             )}
           </TabsContent>
 
-          {canSeeCredentials && (
-            <TabsContent value="credentials">
+          {(canSeeCredentials || user?.isClient) && (
+            <TabsContent value="accounts">
               <Card className="p-4 space-y-4">
                 <div className="flex items-center justify-between">
                   <p className="text-sm text-muted-foreground">
-                    Metadata only — passwords are stored in your external vault.
+                    Logins we manage for this company — open the portal, copy a username, or reveal the password.
                   </p>
-                  <Button size="sm" onClick={() => setCredDialog(true)}>
-                    <Plus className="h-4 w-4" /> Add
-                  </Button>
+                  {canSeeCredentials && (
+                    <Button size="sm" onClick={() => setCredDialog(true)}>
+                      <Plus className="h-4 w-4" /> Add account
+                    </Button>
+                  )}
                 </div>
-                <CredentialsList companyId={id} />
+                <AccountsPanel companyId={id} />
               </Card>
             </TabsContent>
           )}
@@ -394,6 +428,65 @@ function CompanyDetail() {
             </Card>
           </TabsContent>
 
+          {isStaff && (
+            <TabsContent value="payments">
+              <Card className="overflow-hidden">
+                <div className="flex items-center justify-between border-b px-4 py-2">
+                  <span className="text-sm font-medium">Payment schedules</span>
+                  <Button size="sm" onClick={() => setScheduleDialog(true)}>
+                    <Plus className="h-4 w-4" /> Add
+                  </Button>
+                </div>
+                {!schedules?.length ? (
+                  <div className="p-10 text-center text-sm text-muted-foreground">
+                    No payment schedules
+                  </div>
+                ) : (
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
+                      <tr>
+                        <th className="text-left px-4 py-2 font-medium">Name</th>
+                        <th className="text-left px-4 py-2 font-medium">Cadence</th>
+                        <th className="text-left px-4 py-2 font-medium">Method</th>
+                        <th className="text-right px-4 py-2 font-medium">Amount</th>
+                        <th className="text-left px-4 py-2 font-medium">Next run</th>
+                        <th className="px-4 py-2" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {schedules.map((s) => (
+                        <tr key={s.id} className="border-t">
+                          <td className="px-4 py-2 font-medium">
+                            {s.name}
+                            <div className="text-xs text-muted-foreground">{s.payee ?? "—"}</div>
+                          </td>
+                          <td className="px-4 py-2 text-muted-foreground">
+                            {FREQUENCY_LABELS[s.frequency]}
+                          </td>
+                          <td className="px-4 py-2">{s.method ?? "—"}</td>
+                          <td className="px-4 py-2 text-right font-medium">{currency(s.amount)}</td>
+                          <td className="px-4 py-2 text-muted-foreground">
+                            {formatDate(s.next_run_date)}
+                          </td>
+                          <td className="px-4 py-2 text-right">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs"
+                              onClick={() => handleRecordPayment(s)}
+                            >
+                              Record
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </Card>
+            </TabsContent>
+          )}
+
           <TabsContent value="calendar">
             <Card className="overflow-hidden">
               {!calendarEvents?.length ? (
@@ -474,6 +567,11 @@ function CompanyDetail() {
       <CredentialFormDialog open={credDialog} onOpenChange={setCredDialog} companyId={id} />
       <FundingFormDialog open={fundDialog} onOpenChange={setFundDialog} defaultCompanyId={id} />
       <LoanFormDialog open={loanDialog} onOpenChange={setLoanDialog} defaultCompanyId={id} />
+      <PaymentScheduleDialog
+        open={scheduleDialog}
+        onOpenChange={setScheduleDialog}
+        defaultCompanyId={id}
+      />
     </>
   );
 }

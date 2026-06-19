@@ -262,6 +262,12 @@ export type Database = {
           provider: string | null;
           username_hint: string | null;
           vault_reference: string | null;
+          login_url: string | null;
+          username: string | null;
+          account_identifier: string | null;
+          status: string;
+          secret_ciphertext: string | null;
+          has_secret: boolean;
         };
         Insert: {
           category?: Database["public"]["Enums"]["credential_category"];
@@ -273,6 +279,12 @@ export type Database = {
           provider?: string | null;
           username_hint?: string | null;
           vault_reference?: string | null;
+          login_url?: string | null;
+          username?: string | null;
+          account_identifier?: string | null;
+          status?: string;
+          secret_ciphertext?: string | null;
+          has_secret?: boolean;
         };
         Update: {
           category?: Database["public"]["Enums"]["credential_category"];
@@ -284,6 +296,12 @@ export type Database = {
           provider?: string | null;
           username_hint?: string | null;
           vault_reference?: string | null;
+          login_url?: string | null;
+          username?: string | null;
+          account_identifier?: string | null;
+          status?: string;
+          secret_ciphertext?: string | null;
+          has_secret?: boolean;
         };
         Relationships: [
           {
@@ -291,6 +309,81 @@ export type Database = {
             columns: ["company_id"];
             isOneToOne: false;
             referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      payment_schedules: {
+        Row: {
+          active: boolean;
+          amount: number;
+          auto_post: boolean;
+          category: Database["public"]["Enums"]["transaction_category"];
+          company_id: string;
+          created_at: string;
+          created_by: string | null;
+          credential_id: string | null;
+          frequency: Database["public"]["Enums"]["schedule_frequency"];
+          id: string;
+          last_posted_on: string | null;
+          memo: string | null;
+          method: string | null;
+          name: string;
+          next_run_date: string;
+          payee: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          active?: boolean;
+          amount?: number;
+          auto_post?: boolean;
+          category?: Database["public"]["Enums"]["transaction_category"];
+          company_id: string;
+          created_at?: string;
+          created_by?: string | null;
+          credential_id?: string | null;
+          frequency?: Database["public"]["Enums"]["schedule_frequency"];
+          id?: string;
+          last_posted_on?: string | null;
+          memo?: string | null;
+          method?: string | null;
+          name: string;
+          next_run_date: string;
+          payee?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          active?: boolean;
+          amount?: number;
+          auto_post?: boolean;
+          category?: Database["public"]["Enums"]["transaction_category"];
+          company_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+          credential_id?: string | null;
+          frequency?: Database["public"]["Enums"]["schedule_frequency"];
+          id?: string;
+          last_posted_on?: string | null;
+          memo?: string | null;
+          method?: string | null;
+          name?: string;
+          next_run_date?: string;
+          payee?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "payment_schedules_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "payment_schedules_credential_id_fkey";
+            columns: ["credential_id"];
+            isOneToOne: false;
+            referencedRelation: "credentials";
             referencedColumns: ["id"];
           },
         ];
@@ -755,6 +848,14 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      reveal_credential_secret: {
+        Args: { _credential_id: string };
+        Returns: string;
+      };
+      set_credential_secret: {
+        Args: { _credential_id: string; _plaintext: string };
+        Returns: undefined;
+      };
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"];
@@ -783,7 +884,14 @@ export type Database = {
         | "payroll"
         | "software"
         | "utility"
+        | "payment"
         | "other";
+      schedule_frequency:
+        | "weekly"
+        | "biweekly"
+        | "semimonthly"
+        | "monthly"
+        | "quarterly";
       entity_type:
         | "llc"
         | "c_corp"
@@ -944,7 +1052,8 @@ export const Constants = {
     Enums: {
       app_role: ["super_admin", "consultant", "assistant", "bookkeeper", "client"],
       client_status: ["active", "prospect", "inactive", "archived"],
-      credential_category: ["banking", "irs", "state", "payroll", "software", "utility", "other"],
+      credential_category: ["banking", "irs", "state", "payroll", "software", "utility", "payment", "other"],
+      schedule_frequency: ["weekly", "biweekly", "semimonthly", "monthly", "quarterly"],
       entity_type: ["llc", "c_corp", "s_corp", "sole_prop", "partnership", "nonprofit", "other"],
       event_type: ["loan_payment", "follow_up", "renewal", "filing_deadline", "meeting", "other"],
       funding_stage: [

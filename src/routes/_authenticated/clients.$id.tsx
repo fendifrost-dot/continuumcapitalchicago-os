@@ -147,7 +147,7 @@ function ClientDetail() {
                       (co: {
                         id: string;
                         legal_name: string;
-                        entity_type: string;
+                        entity_type: string | null;
                         industry: string | null;
                         ein: string | null;
                       }) => (
@@ -162,7 +162,7 @@ function ClientDetail() {
                               {co.legal_name}
                             </Link>
                           </td>
-                          <td className="px-4 py-2.5 uppercase text-xs">{co.entity_type}</td>
+                          <td className="px-4 py-2.5 uppercase text-xs">{co.entity_type ?? "—"}</td>
                           <td className="px-4 py-2.5 text-muted-foreground">
                             {co.industry ?? "—"}
                           </td>

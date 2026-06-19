@@ -59,7 +59,7 @@ export function ClientFormDialog({
       name: name.trim(),
       email: email || null,
       phone: phone || null,
-      status,
+      status: status as "prospect",
       notes: notes || null,
     };
     if (client) {
