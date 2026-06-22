@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -24,6 +25,16 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { logActivity } from "@/lib/activity";
 import { formatSupabaseError } from "@/lib/supabase-errors";
+
+const ENTITY_TYPES = [
+  { value: "llc", label: "LLC" },
+  { value: "c_corp", label: "C-Corp" },
+  { value: "s_corp", label: "S-Corp" },
+  { value: "sole_prop", label: "Sole Proprietor" },
+  { value: "partnership", label: "Partnership" },
+  { value: "nonprofit", label: "Nonprofit" },
+  { value: "other", label: "Other" },
+];
 
 export function ClientFormDialog({
   open,
@@ -49,9 +60,25 @@ export function ClientFormDialog({
   const [notes, setNotes] = useState(client?.notes ?? "");
   const [saving, setSaving] = useState(false);
 
+  // Optional first company (new clients only)
+  const [addCompany, setAddCompany] = useState(false);
+  const [coName, setCoName] = useState("");
+  const [coEntity, setCoEntity] = useState("llc");
+  const [coEin, setCoEin] = useState("");
+  const [coIndustry, setCoIndustry] = useState("");
+
+  const reset = () => {
+    setName(""); setEmail(""); setPhone(""); setStatus("prospect"); setNotes("");
+    setAddCompany(false); setCoName(""); setCoEntity("llc"); setCoEin(""); setCoIndustry("");
+  };
+
   const handleSave = async () => {
     if (!name.trim()) {
       toast.error("Name is required");
+      return;
+    }
+    if (!client && addCompany && !coName.trim()) {
+      toast.error("Company legal name is required (or turn off “Add a company”)");
       return;
     }
     setSaving(true);
@@ -62,6 +89,7 @@ export function ClientFormDialog({
       status: status as "prospect",
       notes: notes || null,
     };
+
     if (client) {
       const { error } = await supabase.from("clients").update(payload).eq("id", client.id);
       if (error) {
@@ -96,16 +124,47 @@ export function ClientFormDialog({
         entityId: data.id,
         clientId: data.id,
       });
-      toast.success("Client created");
+
+      // Optionally create the client's first company in the same flow.
+      if (addCompany && coName.trim()) {
+        const { data: co, error: coErr } = await supabase
+          .from("companies")
+          .insert({
+            client_id: data.id,
+            legal_name: coName.trim(),
+            entity_type: coEntity as "llc",
+            ein: coEin.trim() || null,
+            industry: coIndustry.trim() || null,
+          })
+          .select("id")
+          .single();
+        if (coErr) {
+          toast.error(`Client created, but company failed: ${formatSupabaseError(coErr.message)}`);
+        } else {
+          await logActivity({
+            action: "company_created",
+            summary: `Created company ${coName} for ${name}`,
+            entityType: "company",
+            entityId: co.id,
+            companyId: co.id,
+            clientId: data.id,
+          });
+          qc.invalidateQueries({ queryKey: ["companies"] });
+          toast.success(`Client + company created`);
+        }
+      } else {
+        toast.success("Client created");
+      }
     }
     qc.invalidateQueries({ queryKey: ["clients"] });
     setSaving(false);
+    reset();
     onOpenChange(false);
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v); }}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{client ? "Edit client" : "New client"}</DialogTitle>
         </DialogHeader>
@@ -147,6 +206,61 @@ export function ClientFormDialog({
             <Label>Notes</Label>
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
           </div>
+
+          {!client && (
+            <div className="rounded-lg border p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="mb-0">Add a company now</Label>
+                  <p className="text-[11px] text-muted-foreground">
+                    Create this client's first company in the same step
+                  </p>
+                </div>
+                <Switch checked={addCompany} onCheckedChange={setAddCompany} />
+              </div>
+              {addCompany && (
+                <div className="space-y-3 pt-1">
+                  <div className="space-y-1.5">
+                    <Label>Company legal name</Label>
+                    <Input
+                      value={coName}
+                      onChange={(e) => setCoName(e.target.value)}
+                      placeholder="Buzz Genius Inc."
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label>Entity type</Label>
+                      <Select value={coEntity} onValueChange={setCoEntity}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ENTITY_TYPES.map((t) => (
+                            <SelectItem key={t.value} value={t.value}>
+                              {t.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>EIN (optional)</Label>
+                      <Input value={coEin} onChange={(e) => setCoEin(e.target.value)} placeholder="99-1234567" />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Industry (optional)</Label>
+                    <Input
+                      value={coIndustry}
+                      onChange={(e) => setCoIndustry(e.target.value)}
+                      placeholder="Marketing & Advertising"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>

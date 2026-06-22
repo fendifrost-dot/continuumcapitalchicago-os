@@ -1,11 +1,21 @@
 import type { ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, FileText } from "lucide-react";
+import { useState } from "react";
+import { Plus, FileText, Users, Building2, Receipt } from "lucide-react";
 
 import { PageHeader } from "@/components/app-shell";
 import { ClientDashboard } from "@/components/client-dashboard";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ClientFormDialog } from "@/components/client-form-dialog";
+import { CompanyFormDialog } from "@/components/company-form-dialog";
+import { TransactionFormDialog } from "@/components/transaction-form-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { currency } from "@/lib/format";
 import { useCurrentUser } from "@/lib/use-current-user";
@@ -26,6 +36,9 @@ const PIPELINE_ORDER: Array<{ key: string; label: string }> = [
 
 function Dashboard() {
   const { data: user } = useCurrentUser();
+  const [clientDialog, setClientDialog] = useState(false);
+  const [companyDialog, setCompanyDialog] = useState(false);
+  const [txDialog, setTxDialog] = useState(false);
   if (user?.isClient) return <ClientDashboard />;
 
   const { data: stats } = useQuery({
@@ -83,16 +96,31 @@ function Dashboard() {
         description="Firm-wide visibility across clients, companies, and activity"
         actions={
           user?.isInternal ? (
-            <Button
-              size="sm"
-              className="rounded-xl font-bold text-[#2a1e00] border-0 hover:brightness-110"
-              style={{
-                backgroundImage: "linear-gradient(90deg, #D4AF37 0%, #8E6E37 100%)",
-                boxShadow: "0 4px 20px rgba(212,175,55,0.25)",
-              }}
-            >
-              <Plus className="h-4 w-4" /> Quick action
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  className="rounded-xl font-bold text-[#2a1e00] border-0 hover:brightness-110"
+                  style={{
+                    backgroundImage: "linear-gradient(90deg, #D4AF37 0%, #8E6E37 100%)",
+                    boxShadow: "0 4px 20px rgba(212,175,55,0.25)",
+                  }}
+                >
+                  <Plus className="h-4 w-4" /> Quick action
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={() => setClientDialog(true)}>
+                  <Users className="h-4 w-4" /> New client
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setCompanyDialog(true)}>
+                  <Building2 className="h-4 w-4" /> New company
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setTxDialog(true)}>
+                  <Receipt className="h-4 w-4" /> New transaction
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           ) : undefined
         }
       />
@@ -218,6 +246,10 @@ function Dashboard() {
           </Panel>
         </div>
       </div>
+
+      <ClientFormDialog open={clientDialog} onOpenChange={setClientDialog} />
+      <CompanyFormDialog open={companyDialog} onOpenChange={setCompanyDialog} />
+      <TransactionFormDialog open={txDialog} onOpenChange={setTxDialog} />
     </>
   );
 }
