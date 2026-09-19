@@ -23,6 +23,11 @@ Deno.serve(async (req) => {
 
   const user = userData.user;
   const email = user.email ?? "";
+  // Defense-in-depth (H1): only grant firm-domain super_admin once the user has
+  // actually proven ownership of the email. If Supabase "Confirm email" is OFF,
+  // email_confirmed_at is still set for password/OAuth signups; this blocks the
+  // "register anything@firmdomain and self-promote" path when confirmation is ON.
+  const emailConfirmed = Boolean(user.email_confirmed_at ?? user.confirmed_at);
   const admin = createServiceClient();
 
   const { data: existingRoles } = await admin
@@ -32,13 +37,16 @@ Deno.serve(async (req) => {
 
   const roles = (existingRoles ?? []).map((r) => r.role);
   let assignedRole: string | null = null;
+  let linkedClient = false;
 
   if (isInternalEmail(email)) {
-    if (!roles.includes("super_admin")) {
+    if (emailConfirmed && !roles.includes("super_admin")) {
       await admin.from("user_roles").insert({ user_id: user.id, role: "super_admin" });
       assignedRole = "super_admin";
     }
-    await admin.from("user_roles").delete().eq("user_id", user.id).eq("role", "client");
+    if (emailConfirmed) {
+      await admin.from("user_roles").delete().eq("user_id", user.id).eq("role", "client");
+    }
   } else {
     const { data: portalLink } = await admin
       .from("client_portal_users")
@@ -46,8 +54,46 @@ Deno.serve(async (req) => {
       .eq("user_id", user.id)
       .maybeSingle();
 
-    if (portalLink) {
-      if (!roles.includes("client")) {
+    let hasPortalLink = Boolean(portalLink);
+
+    // Accept a pending invitation: this is the step that was missing end-to-end.
+    // An admin-issued invitation for this email links the account to its client
+    // (client_portal_users) and/or grants the invited staff role, then is marked
+    // accepted so it can't be reused.
+    if (!hasPortalLink) {
+      const { data: invitation } = await admin
+        .from("invitations")
+        .select("id, role, client_id")
+        .eq("email", email.toLowerCase())
+        .is("accepted_at", null)
+        .gt("expires_at", new Date().toISOString())
+        .order("created_at", { ascending: false })
+        .maybeSingle();
+
+      if (invitation) {
+        if (invitation.client_id) {
+          await admin
+            .from("client_portal_users")
+            .upsert(
+              { user_id: user.id, client_id: invitation.client_id },
+              { onConflict: "user_id,client_id", ignoreDuplicates: true },
+            );
+          hasPortalLink = true;
+          linkedClient = true;
+        }
+        if (invitation.role && !roles.includes(invitation.role)) {
+          await admin.from("user_roles").insert({ user_id: user.id, role: invitation.role });
+          assignedRole = invitation.role;
+        }
+        await admin
+          .from("invitations")
+          .update({ accepted_at: new Date().toISOString() })
+          .eq("id", invitation.id);
+      }
+    }
+
+    if (hasPortalLink) {
+      if (!roles.includes("client") && assignedRole !== "client") {
         await admin.from("user_roles").insert({ user_id: user.id, role: "client" });
         assignedRole = "client";
       }
@@ -84,6 +130,7 @@ Deno.serve(async (req) => {
     isInternal,
     isClient,
     assignedRole,
+    linkedClient,
     access: isInternal ? "operations" : isClient ? "client_portal" : "pending",
   });
 });

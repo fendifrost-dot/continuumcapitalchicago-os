@@ -1,1 +1,11 @@
 project_id = "mdmetmylcfkehugcpbjg"
+
+# Public: invited users hit this from /auth?invite=<token> before they have an
+# account, so it cannot require a JWT. It only returns non-sensitive invite info.
+[functions.invitation-lookup]
+verify_jwt = false
+
+# auth-audit does its own verification (user JWT or x-audit-secret shared secret),
+# so platform JWT verification is disabled to allow the trusted-secret hook path.
+[functions.auth-audit]
+verify_jwt = false

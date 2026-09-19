@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { useCurrentUser } from "@/lib/use-current-user";
 import { invokeEdgeFunction } from "@/lib/edge-functions";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,18 +30,42 @@ function SettingsPage() {
   const { data: user } = useCurrentUser();
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<string>("consultant");
+  const [inviteClientId, setInviteClientId] = useState<string>("");
   const [inviting, setInviting] = useState(false);
+
+  const { data: clients } = useQuery({
+    queryKey: ["clients-invite-picker"],
+    enabled: Boolean(user?.isAdmin),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("clients")
+        .select("id, name")
+        .order("name", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
 
   const handleInvite = async () => {
     if (!inviteEmail.trim()) {
       toast.error("Email is required");
       return;
     }
+    // A client invite is meaningless without the client it unlocks — the portal
+    // link (client_portal_users) is what grants any data access.
+    if (inviteRole === "client" && !inviteClientId) {
+      toast.error("Select which client this invite unlocks");
+      return;
+    }
     setInviting(true);
     const { data, error } = await invokeEdgeFunction<{
       invite_link?: string;
       email_sent?: boolean;
-    }>("send-invitation", { email: inviteEmail.trim(), role: inviteRole });
+    }>("send-invitation", {
+      email: inviteEmail.trim(),
+      role: inviteRole,
+      client_id: inviteRole === "client" ? inviteClientId : undefined,
+    });
     setInviting(false);
     if (error) {
       toast.error(error);
@@ -47,6 +73,7 @@ function SettingsPage() {
     }
     toast.success(`Invitation created. Share this link: ${data?.invite_link ?? ""}`);
     setInviteEmail("");
+    setInviteClientId("");
   };
 
   return (
@@ -93,7 +120,13 @@ function SettingsPage() {
                 </div>
                 <div className="space-y-1.5">
                   <Label>Role</Label>
-                  <Select value={inviteRole} onValueChange={setInviteRole}>
+                  <Select
+                    value={inviteRole}
+                    onValueChange={(v) => {
+                      setInviteRole(v);
+                      if (v !== "client") setInviteClientId("");
+                    }}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -107,6 +140,26 @@ function SettingsPage() {
                   </Select>
                 </div>
               </div>
+              {inviteRole === "client" && (
+                <div className="space-y-1.5">
+                  <Label>Client to unlock</Label>
+                  <Select value={inviteClientId} onValueChange={setInviteClientId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a client…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(clients ?? []).map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    The invited user will see this client's portal after accepting.
+                  </p>
+                </div>
+              )}
               <Button size="sm" onClick={handleInvite} disabled={inviting}>
                 {inviting ? "Sending…" : "Send invitation"}
               </Button>
