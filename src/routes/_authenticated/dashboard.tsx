@@ -39,10 +39,13 @@ function Dashboard() {
   const [clientDialog, setClientDialog] = useState(false);
   const [companyDialog, setCompanyDialog] = useState(false);
   const [txDialog, setTxDialog] = useState(false);
-  if (user?.isClient) return <ClientDashboard />;
 
+  // NOTE: all hooks must run unconditionally. The client-vs-internal branch
+  // happens *after* every hook below, otherwise the hook count changes once
+  // useCurrentUser resolves to a client and React throws (rules-of-hooks).
   const { data: stats } = useQuery({
     queryKey: ["dashboard-stats"],
+    enabled: !!user && !user.isClient,
     queryFn: async () => {
       const [invoices, loans, funding, activity] = await Promise.all([
         supabase
@@ -84,6 +87,9 @@ function Dashboard() {
       };
     },
   });
+
+  // Client portal users get their own dashboard. Branch only after all hooks.
+  if (user?.isClient) return <ClientDashboard />;
 
   const outstandingTotal =
     stats?.invoices.reduce((s: number, i: any) => s + Number(i.total ?? 0), 0) ?? 0;
