@@ -14,6 +14,9 @@ import {
   Activity,
   Settings,
   LogOut,
+  Mail,
+  Send,
+  ScrollText,
 } from "lucide-react";
 
 import {
@@ -59,6 +62,9 @@ const internalItems: NavItem[] = [
 ];
 
 const clientItems: NavItem[] = [
+  { title: "Your file", url: "/file", icon: ScrollText, clientOnly: true },
+  { title: "Letters", url: "/letters", icon: Mail, clientOnly: true },
+  { title: "This mailing", url: "/mailing", icon: Send, clientOnly: true },
   { title: "Overview", url: "/dashboard", icon: LayoutDashboard, clientOnly: true },
   { title: "My companies", url: "/companies", icon: Building2, clientOnly: true },
   { title: "Accounts", url: "/accounts", icon: KeyRound, clientOnly: true },
@@ -98,8 +104,7 @@ export function AppSidebar() {
           <div
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/20 font-bold text-base tracking-tighter"
             style={{
-              backgroundImage:
-                "linear-gradient(135deg, #FDE68A 0%, #D4AF37 45%, #8E6E37 100%)",
+              backgroundImage: "linear-gradient(135deg, #FDE68A 0%, #D4AF37 45%, #8E6E37 100%)",
               color: "#2a1e00",
               boxShadow:
                 "0 0 18px rgba(212,175,55,0.35), inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -1px 0 rgba(0,0,0,0.25)",
@@ -109,7 +114,9 @@ export function AppSidebar() {
           </div>
           {!collapsed && (
             <div className="flex min-w-0 flex-col leading-tight">
-              <span className="truncate text-sm font-semibold text-sidebar-foreground">Continuum</span>
+              <span className="truncate text-sm font-semibold text-sidebar-foreground">
+                Continuum
+              </span>
               <span className="text-[10px] uppercase tracking-widest font-semibold text-[#D4AF37]">
                 {user?.isClient ? "Client portal" : "Chicago · Operations"}
               </span>

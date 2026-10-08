@@ -9,3 +9,10 @@ verify_jwt = false
 # so platform JWT verification is disabled to allow the trusted-secret hook path.
 [functions.auth-audit]
 verify_jwt = false
+
+# Stripe and Lob call these without a user JWT. Each handler verifies its own signature.
+[functions.stripe-credit-webhook]
+verify_jwt = false
+
+[functions.lob-tracking-webhook]
+verify_jwt = false

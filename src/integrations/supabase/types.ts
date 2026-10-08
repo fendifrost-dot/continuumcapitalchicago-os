@@ -867,6 +867,180 @@ export type Database = {
         }
         Relationships: []
       }
+      credit_file_publications: {
+        Row: {
+          client_id: string
+          id: string
+          needs_from_you: string | null
+          next_date: string | null
+          published_at: string
+          published_by: string | null
+          status_sentence: string
+          updated_at: string
+          waiting_on: string
+          waiting_on_name: string | null
+        }
+        Insert: {
+          client_id: string
+          id?: string
+          needs_from_you?: string | null
+          next_date?: string | null
+          published_at?: string
+          published_by?: string | null
+          status_sentence: string
+          updated_at?: string
+          waiting_on: string
+          waiting_on_name?: string | null
+        }
+        Update: {
+          client_id?: string
+          id?: string
+          needs_from_you?: string | null
+          next_date?: string | null
+          published_at?: string
+          published_by?: string | null
+          status_sentence?: string
+          updated_at?: string
+          waiting_on?: string
+          waiting_on_name?: string | null
+        }
+        Relationships: []
+      }
+      credit_mailings: {
+        Row: {
+          certified_cents: number
+          client_id: string
+          created_at: string
+          customer_sentence: string
+          delivered_on: string | null
+          electronic_receipt_cents: number
+          handling_fee_cents: number
+          id: string
+          mailed_on: string | null
+          page_count: number
+          postage_cents: number
+          proof_on_file: boolean
+          recipient_city: string
+          recipient_line1: string
+          recipient_line2: string | null
+          recipient_name: string
+          recipient_state: string
+          recipient_zip: string
+          response_due_on: string | null
+          status: string
+          total_cents: number
+          tracking_number: string | null
+          updated_at: string
+        }
+        Insert: {
+          certified_cents: number
+          client_id: string
+          created_at?: string
+          customer_sentence?: string
+          delivered_on?: string | null
+          electronic_receipt_cents: number
+          handling_fee_cents: number
+          id?: string
+          mailed_on?: string | null
+          page_count: number
+          postage_cents: number
+          proof_on_file?: boolean
+          recipient_city: string
+          recipient_line1: string
+          recipient_line2?: string | null
+          recipient_name: string
+          recipient_state: string
+          recipient_zip: string
+          response_due_on?: string | null
+          status: string
+          total_cents: number
+          tracking_number?: string | null
+          updated_at?: string
+        }
+        Update: {
+          certified_cents?: number
+          client_id?: string
+          created_at?: string
+          customer_sentence?: string
+          delivered_on?: string | null
+          electronic_receipt_cents?: number
+          handling_fee_cents?: number
+          id?: string
+          mailed_on?: string | null
+          page_count?: number
+          postage_cents?: number
+          proof_on_file?: boolean
+          recipient_city?: string
+          recipient_line1?: string
+          recipient_line2?: string | null
+          recipient_name?: string
+          recipient_state?: string
+          recipient_zip?: string
+          response_due_on?: string | null
+          status?: string
+          total_cents?: number
+          tracking_number?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      credit_saved_cards: {
+        Row: {
+          brand: string | null
+          client_id: string
+          exp_month: number | null
+          exp_year: number | null
+          last4: string | null
+          updated_at: string
+        }
+        Insert: {
+          brand?: string | null
+          client_id: string
+          exp_month?: number | null
+          exp_year?: number | null
+          last4?: string | null
+          updated_at?: string
+        }
+        Update: {
+          brand?: string | null
+          client_id?: string
+          exp_month?: number | null
+          exp_year?: number | null
+          last4?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      credit_mail_audit: {
+        Row: {
+          action: string
+          actor_id: string | null
+          client_id: string
+          created_at: string
+          detail: string | null
+          id: string
+          mailing_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          client_id: string
+          created_at?: string
+          detail?: string | null
+          id?: string
+          mailing_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          client_id?: string
+          created_at?: string
+          detail?: string | null
+          id?: string
+          mailing_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

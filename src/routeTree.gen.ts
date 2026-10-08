@@ -18,6 +18,9 @@ import { Route as AuthenticatedPaymentsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedLoansRouteImport } from './routes/_authenticated/loans'
 import { Route as AuthenticatedInvoicesRouteImport } from './routes/_authenticated/invoices'
 import { Route as AuthenticatedFundingRouteImport } from './routes/_authenticated/funding'
+import { Route as AuthenticatedMailingRouteImport } from './routes/_authenticated/mailing'
+import { Route as AuthenticatedLettersRouteImport } from './routes/_authenticated/letters'
+import { Route as AuthenticatedFileRouteImport } from './routes/_authenticated/file'
 import { Route as AuthenticatedDocumentsRouteImport } from './routes/_authenticated/documents'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedCompaniesRouteImport } from './routes/_authenticated/companies'
@@ -71,6 +74,21 @@ const AuthenticatedInvoicesRoute = AuthenticatedInvoicesRouteImport.update({
 const AuthenticatedFundingRoute = AuthenticatedFundingRouteImport.update({
   id: '/funding',
   path: '/funding',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedMailingRoute = AuthenticatedMailingRouteImport.update({
+  id: '/mailing',
+  path: '/mailing',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedLettersRoute = AuthenticatedLettersRouteImport.update({
+  id: '/letters',
+  path: '/letters',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedFileRoute = AuthenticatedFileRouteImport.update({
+  id: '/file',
+  path: '/file',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedDocumentsRoute = AuthenticatedDocumentsRouteImport.update({
@@ -130,7 +148,10 @@ export interface FileRoutesByFullPath {
   '/companies': typeof AuthenticatedCompaniesRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/documents': typeof AuthenticatedDocumentsRoute
+  '/file': typeof AuthenticatedFileRoute
   '/funding': typeof AuthenticatedFundingRoute
+  '/letters': typeof AuthenticatedLettersRoute
+  '/mailing': typeof AuthenticatedMailingRoute
   '/invoices': typeof AuthenticatedInvoicesRoute
   '/loans': typeof AuthenticatedLoansRoute
   '/payments': typeof AuthenticatedPaymentsRoute
@@ -149,7 +170,10 @@ export interface FileRoutesByTo {
   '/companies': typeof AuthenticatedCompaniesRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/documents': typeof AuthenticatedDocumentsRoute
+  '/file': typeof AuthenticatedFileRoute
   '/funding': typeof AuthenticatedFundingRoute
+  '/letters': typeof AuthenticatedLettersRoute
+  '/mailing': typeof AuthenticatedMailingRoute
   '/invoices': typeof AuthenticatedInvoicesRoute
   '/loans': typeof AuthenticatedLoansRoute
   '/payments': typeof AuthenticatedPaymentsRoute
@@ -170,7 +194,10 @@ export interface FileRoutesById {
   '/_authenticated/companies': typeof AuthenticatedCompaniesRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/documents': typeof AuthenticatedDocumentsRoute
+  '/_authenticated/file': typeof AuthenticatedFileRoute
   '/_authenticated/funding': typeof AuthenticatedFundingRoute
+  '/_authenticated/letters': typeof AuthenticatedLettersRoute
+  '/_authenticated/mailing': typeof AuthenticatedMailingRoute
   '/_authenticated/invoices': typeof AuthenticatedInvoicesRoute
   '/_authenticated/loans': typeof AuthenticatedLoansRoute
   '/_authenticated/payments': typeof AuthenticatedPaymentsRoute
@@ -191,7 +218,10 @@ export interface FileRouteTypes {
     | '/companies'
     | '/dashboard'
     | '/documents'
+    | '/file'
     | '/funding'
+    | '/letters'
+    | '/mailing'
     | '/invoices'
     | '/loans'
     | '/payments'
@@ -210,7 +240,10 @@ export interface FileRouteTypes {
     | '/companies'
     | '/dashboard'
     | '/documents'
+    | '/file'
     | '/funding'
+    | '/letters'
+    | '/mailing'
     | '/invoices'
     | '/loans'
     | '/payments'
@@ -230,7 +263,10 @@ export interface FileRouteTypes {
     | '/_authenticated/companies'
     | '/_authenticated/dashboard'
     | '/_authenticated/documents'
+    | '/_authenticated/file'
     | '/_authenticated/funding'
+    | '/_authenticated/letters'
+    | '/_authenticated/mailing'
     | '/_authenticated/invoices'
     | '/_authenticated/loans'
     | '/_authenticated/payments'
@@ -316,6 +352,27 @@ declare module '@tanstack/react-router' {
       path: '/documents'
       fullPath: '/documents'
       preLoaderRoute: typeof AuthenticatedDocumentsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/file': {
+      id: '/_authenticated/file'
+      path: '/file'
+      fullPath: '/file'
+      preLoaderRoute: typeof AuthenticatedFileRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/letters': {
+      id: '/_authenticated/letters'
+      path: '/letters'
+      fullPath: '/letters'
+      preLoaderRoute: typeof AuthenticatedLettersRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/mailing': {
+      id: '/_authenticated/mailing'
+      path: '/mailing'
+      fullPath: '/mailing'
+      preLoaderRoute: typeof AuthenticatedMailingRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/dashboard': {
@@ -410,7 +467,10 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCompaniesRoute: typeof AuthenticatedCompaniesRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedDocumentsRoute: typeof AuthenticatedDocumentsRoute
+  AuthenticatedFileRoute: typeof AuthenticatedFileRoute
   AuthenticatedFundingRoute: typeof AuthenticatedFundingRoute
+  AuthenticatedLettersRoute: typeof AuthenticatedLettersRoute
+  AuthenticatedMailingRoute: typeof AuthenticatedMailingRoute
   AuthenticatedInvoicesRoute: typeof AuthenticatedInvoicesRoute
   AuthenticatedLoansRoute: typeof AuthenticatedLoansRoute
   AuthenticatedPaymentsRoute: typeof AuthenticatedPaymentsRoute
@@ -426,7 +486,10 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCompaniesRoute: AuthenticatedCompaniesRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedDocumentsRoute: AuthenticatedDocumentsRoute,
+  AuthenticatedFileRoute: AuthenticatedFileRoute,
   AuthenticatedFundingRoute: AuthenticatedFundingRoute,
+  AuthenticatedLettersRoute: AuthenticatedLettersRoute,
+  AuthenticatedMailingRoute: AuthenticatedMailingRoute,
   AuthenticatedInvoicesRoute: AuthenticatedInvoicesRoute,
   AuthenticatedLoansRoute: AuthenticatedLoansRoute,
   AuthenticatedPaymentsRoute: AuthenticatedPaymentsRoute,

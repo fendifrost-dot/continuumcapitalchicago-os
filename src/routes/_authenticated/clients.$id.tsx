@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { DocumentUpload, getDocumentUrl } from "@/components/document-upload";
 import { ActivityTimeline } from "@/components/activity-timeline";
+import { CreditFileStaff } from "@/components/credit-file-staff";
 import { supabase } from "@/integrations/supabase/client";
 import { currency, formatDate, formatDateTime } from "@/lib/format";
 
@@ -83,6 +84,7 @@ function ClientDetail() {
             <TabsTrigger value="documents">Documents</TabsTrigger>
             <TabsTrigger value="invoices">Invoices</TabsTrigger>
             <TabsTrigger value="timeline">Timeline</TabsTrigger>
+            <TabsTrigger value="credit">Credit file</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4">
@@ -268,6 +270,10 @@ function ClientDetail() {
 
           <TabsContent value="timeline">
             <ActivityTimeline clientId={id} limit={100} />
+          </TabsContent>
+
+          <TabsContent value="credit">
+            <CreditFileStaff clientId={id} />
           </TabsContent>
         </Tabs>
       </div>
