@@ -16,6 +16,20 @@ export const Route = createFileRoute("/_authenticated/documents")({
 
 function DocumentsPage() {
   const { data: user } = useCurrentUser();
+  const { data: needs } = useQuery({
+    queryKey: ["credit-needs", user?.clientIds],
+    enabled: Boolean(user?.isClient && user.clientIds.length),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("credit_file_publications")
+        .select("needs_from_you")
+        .in("client_id", user?.clientIds ?? [])
+        .not("needs_from_you", "is", null);
+      if (error) throw error;
+      return (data ?? []).map((row) => row.needs_from_you).filter(Boolean);
+    },
+  });
+
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["documents"],
     queryFn: async () => {
@@ -46,6 +60,11 @@ function DocumentsPage() {
         }
       />
       <div className="p-6 space-y-4">
+        {user?.isClient && needs?.length ? (
+          <Card className="p-4 text-sm">
+            We need {needs.join("; ")} from you before the next letter.
+          </Card>
+        ) : null}
         {user?.isInternal && <DocumentUpload onUploaded={() => refetch()} />}
         <Card className="overflow-hidden">
           <table className="w-full text-sm">
