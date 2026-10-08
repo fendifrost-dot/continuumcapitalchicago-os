@@ -2,7 +2,7 @@
 -- It is not a live query of the Credit Guardian ledger. Drafts and raw_line
 -- are not columns on these tables.
 
-CREATE TABLE public.credit_file_publications (
+CREATE TABLE IF NOT EXISTS public.credit_file_publications (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   client_id UUID NOT NULL UNIQUE REFERENCES public.clients(id) ON DELETE CASCADE,
   status_sentence TEXT NOT NULL,
@@ -15,7 +15,7 @@ CREATE TABLE public.credit_file_publications (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE public.credit_mailings (
+CREATE TABLE IF NOT EXISTS public.credit_mailings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   client_id UUID NOT NULL REFERENCES public.clients(id) ON DELETE CASCADE,
   recipient_name TEXT NOT NULL,
@@ -46,10 +46,10 @@ CREATE TABLE public.credit_mailings (
   )
 );
 
-CREATE INDEX credit_mailings_client_idx ON public.credit_mailings(client_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS credit_mailings_client_idx ON public.credit_mailings(client_id, created_at DESC);
 
 -- Brand and last4 only. Payment method ids live in credit_billing_vault.
-CREATE TABLE public.credit_saved_cards (
+CREATE TABLE IF NOT EXISTS public.credit_saved_cards (
   client_id UUID PRIMARY KEY REFERENCES public.clients(id) ON DELETE CASCADE,
   brand TEXT,
   last4 TEXT,
@@ -58,7 +58,7 @@ CREATE TABLE public.credit_saved_cards (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE public.credit_mail_audit (
+CREATE TABLE IF NOT EXISTS public.credit_mail_audit (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   mailing_id UUID REFERENCES public.credit_mailings(id) ON DELETE CASCADE,
   client_id UUID NOT NULL REFERENCES public.clients(id) ON DELETE CASCADE,
@@ -68,17 +68,17 @@ CREATE TABLE public.credit_mail_audit (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX credit_mail_audit_client_idx ON public.credit_mail_audit(client_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS credit_mail_audit_client_idx ON public.credit_mail_audit(client_id, created_at DESC);
 
 -- Server only. No grant to the browser roles.
-CREATE TABLE public.credit_billing_vault (
+CREATE TABLE IF NOT EXISTS public.credit_billing_vault (
   client_id UUID PRIMARY KEY REFERENCES public.clients(id) ON DELETE CASCADE,
   stripe_customer_id TEXT NOT NULL,
   stripe_payment_method_id TEXT,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE public.credit_mailing_fulfillment (
+CREATE TABLE IF NOT EXISTS public.credit_mailing_fulfillment (
   mailing_id UUID PRIMARY KEY REFERENCES public.credit_mailings(id) ON DELETE CASCADE,
   letter_html TEXT NOT NULL,
   stripe_checkout_session_id TEXT,
@@ -91,7 +91,7 @@ CREATE TABLE public.credit_mailing_fulfillment (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE public.credit_webhook_events (
+CREATE TABLE IF NOT EXISTS public.credit_webhook_events (
   event_id TEXT PRIMARY KEY,
   event_type TEXT NOT NULL,
   received_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -126,27 +126,33 @@ ALTER TABLE public.credit_billing_vault FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.credit_mailing_fulfillment FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.credit_webhook_events FORCE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Read own published credit file" ON public.credit_file_publications;
 CREATE POLICY "Read own published credit file"
   ON public.credit_file_publications FOR SELECT TO authenticated
   USING (public.user_can_access_client(auth.uid(), client_id));
 
+DROP POLICY IF EXISTS "Staff publish credit file" ON public.credit_file_publications;
 CREATE POLICY "Staff publish credit file"
   ON public.credit_file_publications FOR ALL TO authenticated
   USING (public.is_internal(auth.uid()))
   WITH CHECK (public.is_internal(auth.uid()));
 
+DROP POLICY IF EXISTS "Read own credit mailings" ON public.credit_mailings;
 CREATE POLICY "Read own credit mailings"
   ON public.credit_mailings FOR SELECT TO authenticated
   USING (public.user_can_access_client(auth.uid(), client_id));
 
+DROP POLICY IF EXISTS "Staff read all credit mailings" ON public.credit_mailings;
 CREATE POLICY "Staff read all credit mailings"
   ON public.credit_mailings FOR SELECT TO authenticated
   USING (public.is_internal(auth.uid()));
 
+DROP POLICY IF EXISTS "Read own saved card display" ON public.credit_saved_cards;
 CREATE POLICY "Read own saved card display"
   ON public.credit_saved_cards FOR SELECT TO authenticated
   USING (public.user_can_access_client(auth.uid(), client_id));
 
+DROP POLICY IF EXISTS "Staff read credit mail audit" ON public.credit_mail_audit;
 CREATE POLICY "Staff read credit mail audit"
   ON public.credit_mail_audit FOR SELECT TO authenticated
   USING (public.is_internal(auth.uid()));
@@ -154,14 +160,17 @@ CREATE POLICY "Staff read credit mail audit"
 -- No policies on the vault, fulfillment, or webhook tables. Authenticated
 -- and anon have no grant. Service role bypasses row security.
 
+DROP TRIGGER IF EXISTS credit_file_publications_updated ON public.credit_file_publications;
 CREATE TRIGGER credit_file_publications_updated
   BEFORE UPDATE ON public.credit_file_publications
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
+DROP TRIGGER IF EXISTS credit_mailings_updated ON public.credit_mailings;
 CREATE TRIGGER credit_mailings_updated
   BEFORE UPDATE ON public.credit_mailings
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
+DROP TRIGGER IF EXISTS credit_saved_cards_updated ON public.credit_saved_cards;
 CREATE TRIGGER credit_saved_cards_updated
   BEFORE UPDATE ON public.credit_saved_cards
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
