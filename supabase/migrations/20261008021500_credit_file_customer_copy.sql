@@ -114,6 +114,17 @@ REVOKE ALL ON public.credit_billing_vault FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON public.credit_mailing_fulfillment FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON public.credit_webhook_events FROM PUBLIC, anon, authenticated;
 
+-- Lovable grants new tables to anon and authenticated by default, including
+-- TRUNCATE, which row security does not cover. Leave clients SELECT only.
+REVOKE ALL ON public.credit_mailings FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON public.credit_mailings TO authenticated;
+REVOKE ALL ON public.credit_saved_cards FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON public.credit_saved_cards TO authenticated;
+REVOKE ALL ON public.credit_mail_audit FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON public.credit_mail_audit TO authenticated;
+REVOKE ALL ON public.credit_file_publications FROM PUBLIC, anon;
+REVOKE TRUNCATE ON public.credit_file_publications FROM authenticated;
+
 ALTER TABLE public.credit_file_publications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.credit_mailings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.credit_saved_cards ENABLE ROW LEVEL SECURITY;
