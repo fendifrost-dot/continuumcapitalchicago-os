@@ -337,6 +337,313 @@ export type Database = {
           },
         ]
       }
+      credit_billing_vault: {
+        Row: {
+          client_id: string
+          stripe_customer_id: string
+          stripe_payment_method_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          stripe_customer_id: string
+          stripe_payment_method_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          stripe_customer_id?: string
+          stripe_payment_method_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_billing_vault_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_file_publications: {
+        Row: {
+          client_id: string
+          id: string
+          needs_from_you: string | null
+          next_date: string | null
+          published_at: string
+          published_by: string | null
+          status_sentence: string
+          updated_at: string
+          waiting_on: string
+          waiting_on_name: string | null
+        }
+        Insert: {
+          client_id: string
+          id?: string
+          needs_from_you?: string | null
+          next_date?: string | null
+          published_at?: string
+          published_by?: string | null
+          status_sentence: string
+          updated_at?: string
+          waiting_on: string
+          waiting_on_name?: string | null
+        }
+        Update: {
+          client_id?: string
+          id?: string
+          needs_from_you?: string | null
+          next_date?: string | null
+          published_at?: string
+          published_by?: string | null
+          status_sentence?: string
+          updated_at?: string
+          waiting_on?: string
+          waiting_on_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_file_publications_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_mail_audit: {
+        Row: {
+          action: string
+          actor_id: string | null
+          client_id: string
+          created_at: string
+          detail: string | null
+          id: string
+          mailing_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          client_id: string
+          created_at?: string
+          detail?: string | null
+          id?: string
+          mailing_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          client_id?: string
+          created_at?: string
+          detail?: string | null
+          id?: string
+          mailing_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_mail_audit_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_mail_audit_mailing_id_fkey"
+            columns: ["mailing_id"]
+            isOneToOne: false
+            referencedRelation: "credit_mailings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_mailing_fulfillment: {
+        Row: {
+          invoice_id: string | null
+          letter_html: string
+          lob_letter_id: string | null
+          lob_proof_url: string | null
+          lob_submitted_at: string | null
+          mailing_id: string
+          released_by: string | null
+          stripe_checkout_session_id: string | null
+          stripe_payment_intent_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          invoice_id?: string | null
+          letter_html: string
+          lob_letter_id?: string | null
+          lob_proof_url?: string | null
+          lob_submitted_at?: string | null
+          mailing_id: string
+          released_by?: string | null
+          stripe_checkout_session_id?: string | null
+          stripe_payment_intent_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          invoice_id?: string | null
+          letter_html?: string
+          lob_letter_id?: string | null
+          lob_proof_url?: string | null
+          lob_submitted_at?: string | null
+          mailing_id?: string
+          released_by?: string | null
+          stripe_checkout_session_id?: string | null
+          stripe_payment_intent_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_mailing_fulfillment_mailing_id_fkey"
+            columns: ["mailing_id"]
+            isOneToOne: true
+            referencedRelation: "credit_mailings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_mailings: {
+        Row: {
+          certified_cents: number
+          client_id: string
+          created_at: string
+          customer_sentence: string
+          delivered_on: string | null
+          electronic_receipt_cents: number
+          handling_fee_cents: number
+          id: string
+          mailed_on: string | null
+          page_count: number
+          postage_cents: number
+          proof_on_file: boolean
+          recipient_city: string
+          recipient_line1: string
+          recipient_line2: string | null
+          recipient_name: string
+          recipient_state: string
+          recipient_zip: string
+          response_due_on: string | null
+          status: string
+          total_cents: number
+          tracking_number: string | null
+          updated_at: string
+        }
+        Insert: {
+          certified_cents: number
+          client_id: string
+          created_at?: string
+          customer_sentence?: string
+          delivered_on?: string | null
+          electronic_receipt_cents: number
+          handling_fee_cents: number
+          id?: string
+          mailed_on?: string | null
+          page_count: number
+          postage_cents: number
+          proof_on_file?: boolean
+          recipient_city: string
+          recipient_line1: string
+          recipient_line2?: string | null
+          recipient_name: string
+          recipient_state: string
+          recipient_zip: string
+          response_due_on?: string | null
+          status: string
+          total_cents: number
+          tracking_number?: string | null
+          updated_at?: string
+        }
+        Update: {
+          certified_cents?: number
+          client_id?: string
+          created_at?: string
+          customer_sentence?: string
+          delivered_on?: string | null
+          electronic_receipt_cents?: number
+          handling_fee_cents?: number
+          id?: string
+          mailed_on?: string | null
+          page_count?: number
+          postage_cents?: number
+          proof_on_file?: boolean
+          recipient_city?: string
+          recipient_line1?: string
+          recipient_line2?: string | null
+          recipient_name?: string
+          recipient_state?: string
+          recipient_zip?: string
+          response_due_on?: string | null
+          status?: string
+          total_cents?: number
+          tracking_number?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_mailings_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_saved_cards: {
+        Row: {
+          brand: string | null
+          client_id: string
+          exp_month: number | null
+          exp_year: number | null
+          last4: string | null
+          updated_at: string
+        }
+        Insert: {
+          brand?: string | null
+          client_id: string
+          exp_month?: number | null
+          exp_year?: number | null
+          last4?: string | null
+          updated_at?: string
+        }
+        Update: {
+          brand?: string | null
+          client_id?: string
+          exp_month?: number | null
+          exp_year?: number | null
+          last4?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_saved_cards_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_webhook_events: {
+        Row: {
+          event_id: string
+          event_type: string
+          received_at: string
+        }
+        Insert: {
+          event_id: string
+          event_type: string
+          received_at?: string
+        }
+        Update: {
+          event_id?: string
+          event_type?: string
+          received_at?: string
+        }
+        Relationships: []
+      }
       documents: {
         Row: {
           client_id: string | null
@@ -864,180 +1171,6 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
-        }
-        Relationships: []
-      }
-      credit_file_publications: {
-        Row: {
-          client_id: string
-          id: string
-          needs_from_you: string | null
-          next_date: string | null
-          published_at: string
-          published_by: string | null
-          status_sentence: string
-          updated_at: string
-          waiting_on: string
-          waiting_on_name: string | null
-        }
-        Insert: {
-          client_id: string
-          id?: string
-          needs_from_you?: string | null
-          next_date?: string | null
-          published_at?: string
-          published_by?: string | null
-          status_sentence: string
-          updated_at?: string
-          waiting_on: string
-          waiting_on_name?: string | null
-        }
-        Update: {
-          client_id?: string
-          id?: string
-          needs_from_you?: string | null
-          next_date?: string | null
-          published_at?: string
-          published_by?: string | null
-          status_sentence?: string
-          updated_at?: string
-          waiting_on?: string
-          waiting_on_name?: string | null
-        }
-        Relationships: []
-      }
-      credit_mailings: {
-        Row: {
-          certified_cents: number
-          client_id: string
-          created_at: string
-          customer_sentence: string
-          delivered_on: string | null
-          electronic_receipt_cents: number
-          handling_fee_cents: number
-          id: string
-          mailed_on: string | null
-          page_count: number
-          postage_cents: number
-          proof_on_file: boolean
-          recipient_city: string
-          recipient_line1: string
-          recipient_line2: string | null
-          recipient_name: string
-          recipient_state: string
-          recipient_zip: string
-          response_due_on: string | null
-          status: string
-          total_cents: number
-          tracking_number: string | null
-          updated_at: string
-        }
-        Insert: {
-          certified_cents: number
-          client_id: string
-          created_at?: string
-          customer_sentence?: string
-          delivered_on?: string | null
-          electronic_receipt_cents: number
-          handling_fee_cents: number
-          id?: string
-          mailed_on?: string | null
-          page_count: number
-          postage_cents: number
-          proof_on_file?: boolean
-          recipient_city: string
-          recipient_line1: string
-          recipient_line2?: string | null
-          recipient_name: string
-          recipient_state: string
-          recipient_zip: string
-          response_due_on?: string | null
-          status: string
-          total_cents: number
-          tracking_number?: string | null
-          updated_at?: string
-        }
-        Update: {
-          certified_cents?: number
-          client_id?: string
-          created_at?: string
-          customer_sentence?: string
-          delivered_on?: string | null
-          electronic_receipt_cents?: number
-          handling_fee_cents?: number
-          id?: string
-          mailed_on?: string | null
-          page_count?: number
-          postage_cents?: number
-          proof_on_file?: boolean
-          recipient_city?: string
-          recipient_line1?: string
-          recipient_line2?: string | null
-          recipient_name?: string
-          recipient_state?: string
-          recipient_zip?: string
-          response_due_on?: string | null
-          status?: string
-          total_cents?: number
-          tracking_number?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      credit_saved_cards: {
-        Row: {
-          brand: string | null
-          client_id: string
-          exp_month: number | null
-          exp_year: number | null
-          last4: string | null
-          updated_at: string
-        }
-        Insert: {
-          brand?: string | null
-          client_id: string
-          exp_month?: number | null
-          exp_year?: number | null
-          last4?: string | null
-          updated_at?: string
-        }
-        Update: {
-          brand?: string | null
-          client_id?: string
-          exp_month?: number | null
-          exp_year?: number | null
-          last4?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      credit_mail_audit: {
-        Row: {
-          action: string
-          actor_id: string | null
-          client_id: string
-          created_at: string
-          detail: string | null
-          id: string
-          mailing_id: string | null
-        }
-        Insert: {
-          action: string
-          actor_id?: string | null
-          client_id: string
-          created_at?: string
-          detail?: string | null
-          id?: string
-          mailing_id?: string | null
-        }
-        Update: {
-          action?: string
-          actor_id?: string | null
-          client_id?: string
-          created_at?: string
-          detail?: string | null
-          id?: string
-          mailing_id?: string | null
         }
         Relationships: []
       }

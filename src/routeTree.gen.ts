@@ -15,11 +15,11 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedTransactionsRouteImport } from './routes/_authenticated/transactions'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedPaymentsRouteImport } from './routes/_authenticated/payments'
+import { Route as AuthenticatedMailingRouteImport } from './routes/_authenticated/mailing'
 import { Route as AuthenticatedLoansRouteImport } from './routes/_authenticated/loans'
+import { Route as AuthenticatedLettersRouteImport } from './routes/_authenticated/letters'
 import { Route as AuthenticatedInvoicesRouteImport } from './routes/_authenticated/invoices'
 import { Route as AuthenticatedFundingRouteImport } from './routes/_authenticated/funding'
-import { Route as AuthenticatedMailingRouteImport } from './routes/_authenticated/mailing'
-import { Route as AuthenticatedLettersRouteImport } from './routes/_authenticated/letters'
 import { Route as AuthenticatedFileRouteImport } from './routes/_authenticated/file'
 import { Route as AuthenticatedDocumentsRouteImport } from './routes/_authenticated/documents'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
@@ -61,9 +61,19 @@ const AuthenticatedPaymentsRoute = AuthenticatedPaymentsRouteImport.update({
   path: '/payments',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedMailingRoute = AuthenticatedMailingRouteImport.update({
+  id: '/mailing',
+  path: '/mailing',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedLoansRoute = AuthenticatedLoansRouteImport.update({
   id: '/loans',
   path: '/loans',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedLettersRoute = AuthenticatedLettersRouteImport.update({
+  id: '/letters',
+  path: '/letters',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedInvoicesRoute = AuthenticatedInvoicesRouteImport.update({
@@ -74,16 +84,6 @@ const AuthenticatedInvoicesRoute = AuthenticatedInvoicesRouteImport.update({
 const AuthenticatedFundingRoute = AuthenticatedFundingRouteImport.update({
   id: '/funding',
   path: '/funding',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedMailingRoute = AuthenticatedMailingRouteImport.update({
-  id: '/mailing',
-  path: '/mailing',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedLettersRoute = AuthenticatedLettersRouteImport.update({
-  id: '/letters',
-  path: '/letters',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedFileRoute = AuthenticatedFileRouteImport.update({
@@ -150,10 +150,10 @@ export interface FileRoutesByFullPath {
   '/documents': typeof AuthenticatedDocumentsRoute
   '/file': typeof AuthenticatedFileRoute
   '/funding': typeof AuthenticatedFundingRoute
-  '/letters': typeof AuthenticatedLettersRoute
-  '/mailing': typeof AuthenticatedMailingRoute
   '/invoices': typeof AuthenticatedInvoicesRoute
+  '/letters': typeof AuthenticatedLettersRoute
   '/loans': typeof AuthenticatedLoansRoute
+  '/mailing': typeof AuthenticatedMailingRoute
   '/payments': typeof AuthenticatedPaymentsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/transactions': typeof AuthenticatedTransactionsRoute
@@ -172,10 +172,10 @@ export interface FileRoutesByTo {
   '/documents': typeof AuthenticatedDocumentsRoute
   '/file': typeof AuthenticatedFileRoute
   '/funding': typeof AuthenticatedFundingRoute
-  '/letters': typeof AuthenticatedLettersRoute
-  '/mailing': typeof AuthenticatedMailingRoute
   '/invoices': typeof AuthenticatedInvoicesRoute
+  '/letters': typeof AuthenticatedLettersRoute
   '/loans': typeof AuthenticatedLoansRoute
+  '/mailing': typeof AuthenticatedMailingRoute
   '/payments': typeof AuthenticatedPaymentsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/transactions': typeof AuthenticatedTransactionsRoute
@@ -196,10 +196,10 @@ export interface FileRoutesById {
   '/_authenticated/documents': typeof AuthenticatedDocumentsRoute
   '/_authenticated/file': typeof AuthenticatedFileRoute
   '/_authenticated/funding': typeof AuthenticatedFundingRoute
-  '/_authenticated/letters': typeof AuthenticatedLettersRoute
-  '/_authenticated/mailing': typeof AuthenticatedMailingRoute
   '/_authenticated/invoices': typeof AuthenticatedInvoicesRoute
+  '/_authenticated/letters': typeof AuthenticatedLettersRoute
   '/_authenticated/loans': typeof AuthenticatedLoansRoute
+  '/_authenticated/mailing': typeof AuthenticatedMailingRoute
   '/_authenticated/payments': typeof AuthenticatedPaymentsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/transactions': typeof AuthenticatedTransactionsRoute
@@ -220,10 +220,10 @@ export interface FileRouteTypes {
     | '/documents'
     | '/file'
     | '/funding'
-    | '/letters'
-    | '/mailing'
     | '/invoices'
+    | '/letters'
     | '/loans'
+    | '/mailing'
     | '/payments'
     | '/settings'
     | '/transactions'
@@ -242,10 +242,10 @@ export interface FileRouteTypes {
     | '/documents'
     | '/file'
     | '/funding'
-    | '/letters'
-    | '/mailing'
     | '/invoices'
+    | '/letters'
     | '/loans'
+    | '/mailing'
     | '/payments'
     | '/settings'
     | '/transactions'
@@ -265,10 +265,10 @@ export interface FileRouteTypes {
     | '/_authenticated/documents'
     | '/_authenticated/file'
     | '/_authenticated/funding'
-    | '/_authenticated/letters'
-    | '/_authenticated/mailing'
     | '/_authenticated/invoices'
+    | '/_authenticated/letters'
     | '/_authenticated/loans'
+    | '/_authenticated/mailing'
     | '/_authenticated/payments'
     | '/_authenticated/settings'
     | '/_authenticated/transactions'
@@ -326,11 +326,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPaymentsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/mailing': {
+      id: '/_authenticated/mailing'
+      path: '/mailing'
+      fullPath: '/mailing'
+      preLoaderRoute: typeof AuthenticatedMailingRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/loans': {
       id: '/_authenticated/loans'
       path: '/loans'
       fullPath: '/loans'
       preLoaderRoute: typeof AuthenticatedLoansRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/letters': {
+      id: '/_authenticated/letters'
+      path: '/letters'
+      fullPath: '/letters'
+      preLoaderRoute: typeof AuthenticatedLettersRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/invoices': {
@@ -347,13 +361,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFundingRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/documents': {
-      id: '/_authenticated/documents'
-      path: '/documents'
-      fullPath: '/documents'
-      preLoaderRoute: typeof AuthenticatedDocumentsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/file': {
       id: '/_authenticated/file'
       path: '/file'
@@ -361,18 +368,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFileRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/letters': {
-      id: '/_authenticated/letters'
-      path: '/letters'
-      fullPath: '/letters'
-      preLoaderRoute: typeof AuthenticatedLettersRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/mailing': {
-      id: '/_authenticated/mailing'
-      path: '/mailing'
-      fullPath: '/mailing'
-      preLoaderRoute: typeof AuthenticatedMailingRouteImport
+    '/_authenticated/documents': {
+      id: '/_authenticated/documents'
+      path: '/documents'
+      fullPath: '/documents'
+      preLoaderRoute: typeof AuthenticatedDocumentsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/dashboard': {
@@ -469,10 +469,10 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDocumentsRoute: typeof AuthenticatedDocumentsRoute
   AuthenticatedFileRoute: typeof AuthenticatedFileRoute
   AuthenticatedFundingRoute: typeof AuthenticatedFundingRoute
-  AuthenticatedLettersRoute: typeof AuthenticatedLettersRoute
-  AuthenticatedMailingRoute: typeof AuthenticatedMailingRoute
   AuthenticatedInvoicesRoute: typeof AuthenticatedInvoicesRoute
+  AuthenticatedLettersRoute: typeof AuthenticatedLettersRoute
   AuthenticatedLoansRoute: typeof AuthenticatedLoansRoute
+  AuthenticatedMailingRoute: typeof AuthenticatedMailingRoute
   AuthenticatedPaymentsRoute: typeof AuthenticatedPaymentsRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedTransactionsRoute: typeof AuthenticatedTransactionsRoute
@@ -488,10 +488,10 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDocumentsRoute: AuthenticatedDocumentsRoute,
   AuthenticatedFileRoute: AuthenticatedFileRoute,
   AuthenticatedFundingRoute: AuthenticatedFundingRoute,
-  AuthenticatedLettersRoute: AuthenticatedLettersRoute,
-  AuthenticatedMailingRoute: AuthenticatedMailingRoute,
   AuthenticatedInvoicesRoute: AuthenticatedInvoicesRoute,
+  AuthenticatedLettersRoute: AuthenticatedLettersRoute,
   AuthenticatedLoansRoute: AuthenticatedLoansRoute,
+  AuthenticatedMailingRoute: AuthenticatedMailingRoute,
   AuthenticatedPaymentsRoute: AuthenticatedPaymentsRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedTransactionsRoute: AuthenticatedTransactionsRoute,
