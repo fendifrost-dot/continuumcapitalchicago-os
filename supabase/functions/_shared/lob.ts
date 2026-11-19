@@ -1,7 +1,12 @@
 /**
  * Lob submit. Import this only from the Stripe webhook (and the tracking
  * webhook). A charge handler must not call it.
+ *
+ * address_placement is top_first_page. Page 1 of a packet leaves the top
+ * blank for the window. insert_blank_page is not used: Lob bills that extra
+ * sheet, and the quote is the PDF page count.
  */
+import { LOB_ADDRESS_PLACEMENT } from "./credit-mail-policy.ts";
 
 export interface LobAddress {
   name: string;
@@ -29,7 +34,8 @@ export async function submitCertifiedLetter(input: {
   mailingId: string;
   to: LobAddress;
   from: LobAddress;
-  html: string;
+  /** Inline HTML under Lob's character cap, or an https URL to a letter-size PDF. */
+  file: string;
 }): Promise<LobLetterResult> {
   const key = Deno.env.get("LOB_API_KEY") ?? "";
   const from = input.from;
@@ -58,8 +64,10 @@ export async function submitCertifiedLetter(input: {
       address_zip: from.zip,
       address_country: "US",
     },
-    file: input.html,
+    file: input.file,
     color: false,
+    double_sided: false,
+    address_placement: LOB_ADDRESS_PLACEMENT,
     use_type: "operational",
     extra_service: "certified_return_receipt",
     mail_type: "usps_first_class",

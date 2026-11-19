@@ -1,22 +1,27 @@
 import { createServiceClient } from "../_shared/client.ts";
 import { jsonResponse, handleCors } from "../_shared/cors.ts";
+import { sandboxKeyModes } from "../_shared/credit-mail-keys.ts";
 import {
+  PACKET_BUCKET,
+  PACKET_SIGNED_URL_SECONDS,
   addDays,
   amountsMatch,
   decideStripeEvent,
   letterSentence,
+  lobFileSource,
   postalAddressFrom,
   returnAddressIssue,
+  sandboxRefusal,
 } from "../_shared/credit-mail-policy.ts";
 import { lobConfigured, submitCertifiedLetter } from "../_shared/lob.ts";
-import { createStripeClient, webhookSecret } from "../_shared/stripe-credit.ts";
+import { createWebhookStripeClient, webhookSecret } from "../_shared/stripe-credit.ts";
 
 Deno.serve(async (req) => {
   const cors = handleCors(req);
   if (cors) return cors;
   if (req.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405);
 
-  const stripe = createStripeClient();
+  const stripe = createWebhookStripeClient();
   const secret = webhookSecret();
   if (!stripe || !secret) return jsonResponse({ error: "payments_not_configured" }, 503);
 
@@ -67,7 +72,7 @@ Deno.serve(async (req) => {
 });
 
 async function saveCard(
-  stripe: NonNullable<ReturnType<typeof createStripeClient>>,
+  stripe: NonNullable<ReturnType<typeof createWebhookStripeClient>>,
   admin: ReturnType<typeof createServiceClient>,
   clientId: string | null,
   setupIntentId: string | null,
@@ -132,7 +137,7 @@ async function saveCard(
 async function markFailed(admin: ReturnType<typeof createServiceClient>, mailingId: string) {
   const { data: mailing } = await admin
     .from("credit_mailings")
-    .select("id, client_id, status")
+    .select("id, client_id, status, is_test")
     .eq("id", mailingId)
     .maybeSingle();
   if (!mailing) return;
@@ -150,19 +155,23 @@ async function markFailed(admin: ReturnType<typeof createServiceClient>, mailing
     mailing_id: mailingId,
     client_id: mailing.client_id,
     action: "charge_failed",
-    detail: "Stripe reported the payment failed. Lob was not called.",
+    is_test: mailing.is_test === true,
+    detail: auditDetail(
+      mailing.is_test === true,
+      "Stripe reported the payment failed. Lob was not called.",
+    ),
   });
 }
 
 async function fulfillPaidLetter(
-  stripe: NonNullable<ReturnType<typeof createStripeClient>>,
+  stripe: NonNullable<ReturnType<typeof createWebhookStripeClient>>,
   admin: ReturnType<typeof createServiceClient>,
   decision: { mailingId: string; paymentIntentId: string | null; amountCents: number | null },
 ) {
   const { data: mailing, error: mailingError } = await admin
     .from("credit_mailings")
     .select(
-      "id, client_id, status, total_cents, recipient_name, recipient_line1, recipient_line2, recipient_city, recipient_state, recipient_zip, return_name, return_line1, return_line2, return_city, return_state, return_zip, postage_cents, certified_cents, electronic_receipt_cents, handling_fee_cents",
+      "id, client_id, status, total_cents, recipient_name, recipient_line1, recipient_line2, recipient_city, recipient_state, recipient_zip, return_name, return_line1, return_line2, return_city, return_state, return_zip, postage_cents, certified_cents, electronic_receipt_cents, handling_fee_cents, packet_storage_path, is_test",
     )
     .eq("id", decision.mailingId)
     .maybeSingle();
@@ -182,22 +191,29 @@ async function fulfillPaidLetter(
     .maybeSingle();
   if (!fulfillment) return;
   if (fulfillment.lob_letter_id) return;
+  const isTest = mailing.is_test === true;
 
   if (!amountsMatch(mailing.total_cents, decision.amountCents)) {
-    await admin.from("credit_mail_audit").insert({
+    await writeAudit(admin, {
       mailing_id: mailing.id,
       client_id: mailing.client_id,
       action: "amount_mismatch",
-      detail: "The paid amount did not match the quote. The letter was not printed.",
+      is_test: isTest,
+      detail: auditDetail(
+        isTest,
+        "The paid amount did not match the quote. The letter was not printed.",
+      ),
     });
     return;
   }
 
-  if (decision.paymentIntentId) {
+  if (decision.paymentIntentId && !isTest) {
     await saveCard(stripe, admin, mailing.client_id, null, {
       payment_intent: decision.paymentIntentId,
       metadata: { client_id: mailing.client_id },
     });
+  }
+  if (decision.paymentIntentId) {
     await admin
       .from("credit_mailing_fulfillment")
       .update({ stripe_payment_intent_id: decision.paymentIntentId })
@@ -224,36 +240,74 @@ async function fulfillPaidLetter(
     })
     .eq("id", mailing.id);
 
-  await mirrorInvoice(admin, mailing, fulfillment.invoice_id, fulfillment.released_by);
+  if (isTest) {
+    await writeAudit(admin, {
+      mailing_id: mailing.id,
+      client_id: mailing.client_id,
+      actor_id: fulfillment.released_by,
+      action: "invoice_skipped",
+      is_test: true,
+      detail: "Sandbox letter. No bookkeeping invoice was created.",
+    });
+  } else {
+    await mirrorInvoice(admin, mailing, fulfillment.invoice_id, fulfillment.released_by);
+  }
 
-  await admin.from("credit_mail_audit").insert({
+  await writeAudit(admin, {
     mailing_id: mailing.id,
     client_id: mailing.client_id,
     actor_id: fulfillment.released_by,
     action: "charge_succeeded",
-    detail: returnIssue
-      ? "Stripe confirmed the payment. The return address on this letter is incomplete, so nothing was printed."
-      : "Stripe confirmed the payment. Printing waits on the mail submit inside this webhook.",
+    is_test: isTest,
+    detail: auditDetail(
+      isTest,
+      returnIssue
+        ? "Stripe confirmed the payment. The return address on this letter is incomplete, so nothing was printed."
+        : "Stripe confirmed the payment. Printing waits on the mail submit inside this webhook.",
+    ),
   });
 
   if (returnIssue) {
-    await admin.from("credit_mail_audit").insert({
+    await writeAudit(admin, {
       mailing_id: mailing.id,
       client_id: mailing.client_id,
       actor_id: fulfillment.released_by,
       action: "return_address_incomplete",
-      detail: `${returnIssue}. Lob was not called. The envelope is never sent from Continuum.`,
+      is_test: isTest,
+      detail: auditDetail(
+        isTest,
+        `${returnIssue}. Lob was not called. The envelope is never sent from Continuum.`,
+      ),
     });
     return;
   }
 
+  if (isTest) {
+    const refusal = sandboxRefusal(sandboxKeyModes());
+    if (refusal) {
+      await writeAudit(admin, {
+        mailing_id: mailing.id,
+        client_id: mailing.client_id,
+        actor_id: fulfillment.released_by,
+        action: "sandbox_refused",
+        is_test: true,
+        detail: `${refusal} Lob was not called.`,
+      });
+      return;
+    }
+  }
+
   if (!lobConfigured()) {
-    await admin.from("credit_mail_audit").insert({
+    await writeAudit(admin, {
       mailing_id: mailing.id,
       client_id: mailing.client_id,
       actor_id: fulfillment.released_by,
       action: "lob_not_submitted",
-      detail: "Payment succeeded. The mail provider key is not configured, so nothing was printed.",
+      is_test: isTest,
+      detail: auditDetail(
+        isTest,
+        "Payment succeeded. The mail provider key is not configured, so nothing was printed.",
+      ),
     });
     return;
   }
@@ -269,9 +323,10 @@ async function fulfillPaidLetter(
   if (!claimed) return;
 
   try {
+    const file = await letterFile(admin, mailing.packet_storage_path, fulfillment.letter_html);
     const letter = await submitCertifiedLetter({
       mailingId: mailing.id,
-      html: fulfillment.letter_html,
+      file,
       to: {
         name: mailing.recipient_name,
         line1: mailing.recipient_line1,
@@ -311,14 +366,18 @@ async function fulfillPaidLetter(
       .from("credit_mailing_fulfillment")
       .update({ lob_letter_id: letter.id, lob_proof_url: letter.url })
       .eq("mailing_id", mailing.id);
-    await admin.from("credit_mail_audit").insert({
+    await writeAudit(admin, {
       mailing_id: mailing.id,
       client_id: mailing.client_id,
       actor_id: fulfillment.released_by,
       action: "lob_submitted",
-      detail: letter.trackingNumber
-        ? `Certified letter accepted. Tracking ${letter.trackingNumber}.`
-        : "Certified letter accepted. Tracking is not back yet.",
+      is_test: isTest,
+      detail: auditDetail(
+        isTest,
+        letter.trackingNumber
+          ? `Certified letter accepted. Tracking ${letter.trackingNumber}.`
+          : "Certified letter accepted. Tracking is not back yet.",
+      ),
     });
   } catch (error) {
     await admin
@@ -326,14 +385,50 @@ async function fulfillPaidLetter(
       .update({ lob_submitted_at: null })
       .eq("mailing_id", mailing.id)
       .is("lob_letter_id", null);
-    await admin.from("credit_mail_audit").insert({
+    await writeAudit(admin, {
       mailing_id: mailing.id,
       client_id: mailing.client_id,
       action: "lob_error",
-      detail: "The mail provider did not accept the letter. Stripe will retry this webhook.",
+      is_test: isTest,
+      detail: auditDetail(
+        isTest,
+        "The mail provider did not accept the letter. Stripe will retry this webhook.",
+      ),
     });
     throw error;
   }
+}
+
+function auditDetail(isTest: boolean, text: string): string {
+  return isTest ? `Sandbox. ${text}` : text;
+}
+
+async function writeAudit(
+  admin: ReturnType<typeof createServiceClient>,
+  row: {
+    mailing_id: string;
+    client_id: string;
+    actor_id?: string | null;
+    action: string;
+    detail: string;
+    is_test: boolean;
+  },
+) {
+  await admin.from("credit_mail_audit").insert(row);
+}
+
+async function letterFile(
+  admin: ReturnType<typeof createServiceClient>,
+  packetStoragePath: string | null,
+  letterHtml: string | null,
+): Promise<string> {
+  const source = lobFileSource({ packetStoragePath, letterHtml });
+  if (source === "inline_html") return letterHtml ?? "";
+  const signed = await admin.storage
+    .from(PACKET_BUCKET)
+    .createSignedUrl(packetStoragePath ?? "", PACKET_SIGNED_URL_SECONDS);
+  if (signed.error || !signed.data?.signedUrl) throw new Error("packet_url_unavailable");
+  return signed.data.signedUrl;
 }
 
 async function mirrorInvoice(

@@ -436,6 +436,7 @@ export type Database = {
           created_at: string
           detail: string | null
           id: string
+          is_test: boolean
           mailing_id: string | null
         }
         Insert: {
@@ -445,6 +446,7 @@ export type Database = {
           created_at?: string
           detail?: string | null
           id?: string
+          is_test?: boolean
           mailing_id?: string | null
         }
         Update: {
@@ -454,6 +456,7 @@ export type Database = {
           created_at?: string
           detail?: string | null
           id?: string
+          is_test?: boolean
           mailing_id?: string | null
         }
         Relationships: [
@@ -476,7 +479,7 @@ export type Database = {
       credit_mailing_fulfillment: {
         Row: {
           invoice_id: string | null
-          letter_html: string
+          letter_html: string | null
           lob_letter_id: string | null
           lob_proof_url: string | null
           lob_submitted_at: string | null
@@ -488,7 +491,7 @@ export type Database = {
         }
         Insert: {
           invoice_id?: string | null
-          letter_html: string
+          letter_html?: string | null
           lob_letter_id?: string | null
           lob_proof_url?: string | null
           lob_submitted_at?: string | null
@@ -500,7 +503,7 @@ export type Database = {
         }
         Update: {
           invoice_id?: string | null
-          letter_html?: string
+          letter_html?: string | null
           lob_letter_id?: string | null
           lob_proof_url?: string | null
           lob_submitted_at?: string | null
@@ -530,7 +533,9 @@ export type Database = {
           electronic_receipt_cents: number
           handling_fee_cents: number
           id: string
+          is_test: boolean
           mailed_on: string | null
+          packet_storage_path: string | null
           page_count: number
           postage_cents: number
           proof_on_file: boolean
@@ -561,7 +566,9 @@ export type Database = {
           electronic_receipt_cents: number
           handling_fee_cents: number
           id?: string
+          is_test?: boolean
           mailed_on?: string | null
+          packet_storage_path?: string | null
           page_count: number
           postage_cents: number
           proof_on_file?: boolean
@@ -592,7 +599,9 @@ export type Database = {
           electronic_receipt_cents?: number
           handling_fee_cents?: number
           id?: string
+          is_test?: boolean
           mailed_on?: string | null
+          packet_storage_path?: string | null
           page_count?: number
           postage_cents?: number
           proof_on_file?: boolean

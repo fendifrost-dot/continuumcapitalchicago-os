@@ -33,6 +33,7 @@ function ThisMailingPage() {
             "id, client_id, recipient_name, recipient_city, recipient_state, return_name, return_line1, return_line2, return_city, return_state, return_zip, page_count, postage_cents, certified_cents, electronic_receipt_cents, handling_fee_cents, total_cents, status",
           )
           .in("client_id", clientIds)
+          .eq("is_test", false)
           .in("status", ["awaiting_payment", "payment_failed"])
           .order("created_at", { ascending: false }),
         supabase

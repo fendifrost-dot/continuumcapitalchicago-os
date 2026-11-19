@@ -6,14 +6,20 @@ Shared utilities live in `_shared/`.
 
 ## Functions
 
-| Function                | Trigger                | Purpose                                                                                           |
-| ----------------------- | ---------------------- | ------------------------------------------------------------------------------------------------- |
-| `ensure-user-role`      | App invoke on sign-in  | Assigns firm staff vs client portal roles; promotes `@continuumcapitalchicago.com` to super_admin |
-| `payment-reminders`     | Daily cron             | In-app reminders at 30/14/7/1 days for loans, calendar, invoices                                  |
-| `mark-overdue-invoices` | Daily cron             | Marks past-due sent invoices as overdue                                                           |
-| `generate-invoice-pdf`  | App invoke             | Builds PDF, uploads to storage                                                                    |
-| `auth-audit`            | App invoke / auth hook | Logs sign-in to activity trail                                                                    |
-| `send-invitation`       | App invoke (admin)     | Creates invitation record and returns shareable link                                              |
+| Function                 | Trigger                | Purpose                                                                                           |
+| ------------------------ | ---------------------- | ------------------------------------------------------------------------------------------------- |
+| `ensure-user-role`       | App invoke on sign-in  | Assigns firm staff vs client portal roles; promotes `@continuumcapitalchicago.com` to super_admin |
+| `payment-reminders`      | Daily cron             | In-app reminders at 30/14/7/1 days for loans, calendar, invoices                                  |
+| `mark-overdue-invoices`  | Daily cron             | Marks past-due sent invoices as overdue                                                           |
+| `generate-invoice-pdf`   | App invoke             | Builds PDF, uploads to storage                                                                    |
+| `auth-audit`             | App invoke / auth hook | Logs sign-in to activity trail                                                                    |
+| `send-invitation`        | App invoke (admin)     | Creates invitation record and returns shareable link                                              |
+| `credit-prepare-mailing` | App invoke (staff)     | Quotes a certified letter. HTML stays inline; a packet PDF is stored privately                    |
+| `credit-save-card`       | App invoke (client)    | Opens Checkout. Internal staff are refused                                                        |
+| `credit-charge-mailing`  | App invoke (client)    | Charges the client’s saved card. Internal staff are refused                                       |
+| `credit-test-mailing`    | App invoke (staff)     | Sandbox only: test Stripe card, then the webhook sends to Lob test mode                           |
+| `stripe-credit-webhook`  | Stripe webhook         | On a paid letter, signs the packet PDF or sends inline HTML to Lob                                |
+| `lob-tracking-webhook`   | Lob webhook            | Records tracking. Sandbox rows stay flagged                                                       |
 
 Email delivery (Resend) is intentionally not wired — invitations and reminders are in-app only for now.
 
