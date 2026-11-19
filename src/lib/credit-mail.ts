@@ -4,5 +4,8 @@ export {
   QuoteError,
   fileSentence,
   formatLongDate,
+  formatReturnAddress,
   quoteMailing,
+  requireClientReturnAddress,
+  returnAddressIssue,
 } from "../../supabase/functions/_shared/credit-mail-policy.ts";

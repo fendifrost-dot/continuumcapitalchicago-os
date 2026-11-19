@@ -5,6 +5,8 @@ import {
   amountsMatch,
   decideStripeEvent,
   letterSentence,
+  postalAddressFrom,
+  returnAddressIssue,
 } from "../_shared/credit-mail-policy.ts";
 import { lobConfigured, submitCertifiedLetter } from "../_shared/lob.ts";
 import { createStripeClient, webhookSecret } from "../_shared/stripe-credit.ts";
@@ -157,13 +159,14 @@ async function fulfillPaidLetter(
   admin: ReturnType<typeof createServiceClient>,
   decision: { mailingId: string; paymentIntentId: string | null; amountCents: number | null },
 ) {
-  const { data: mailing } = await admin
+  const { data: mailing, error: mailingError } = await admin
     .from("credit_mailings")
     .select(
-      "id, client_id, status, total_cents, recipient_name, recipient_line1, recipient_line2, recipient_city, recipient_state, recipient_zip, postage_cents, certified_cents, electronic_receipt_cents, handling_fee_cents",
+      "id, client_id, status, total_cents, recipient_name, recipient_line1, recipient_line2, recipient_city, recipient_state, recipient_zip, return_name, return_line1, return_line2, return_city, return_state, return_zip, postage_cents, certified_cents, electronic_receipt_cents, handling_fee_cents",
     )
     .eq("id", decision.mailingId)
     .maybeSingle();
+  if (mailingError) throw mailingError;
   if (!mailing) return;
   if (
     mailing.status === "cancelled" ||
@@ -201,12 +204,23 @@ async function fulfillPaidLetter(
       .eq("mailing_id", mailing.id);
   }
 
+  const returnIssue = returnAddressIssue({
+    name: mailing.return_name,
+    line1: mailing.return_line1,
+    line2: mailing.return_line2,
+    city: mailing.return_city,
+    state: mailing.return_state,
+    zip: mailing.return_zip,
+  });
+
   const mailedOn = new Date().toISOString().slice(0, 10);
   await admin
     .from("credit_mailings")
     .update({
       status: "paid",
-      customer_sentence: letterSentence({ status: "paid" }),
+      customer_sentence: returnIssue
+        ? "Paid. This letter was not mailed because the return address on file is incomplete."
+        : letterSentence({ status: "paid" }),
     })
     .eq("id", mailing.id);
 
@@ -217,8 +231,21 @@ async function fulfillPaidLetter(
     client_id: mailing.client_id,
     actor_id: fulfillment.released_by,
     action: "charge_succeeded",
-    detail: "Stripe confirmed the payment. Printing waits on the mail submit inside this webhook.",
+    detail: returnIssue
+      ? "Stripe confirmed the payment. The return address on this letter is incomplete, so nothing was printed."
+      : "Stripe confirmed the payment. Printing waits on the mail submit inside this webhook.",
   });
+
+  if (returnIssue) {
+    await admin.from("credit_mail_audit").insert({
+      mailing_id: mailing.id,
+      client_id: mailing.client_id,
+      actor_id: fulfillment.released_by,
+      action: "return_address_incomplete",
+      detail: `${returnIssue}. Lob was not called. The envelope is never sent from Continuum.`,
+    });
+    return;
+  }
 
   if (!lobConfigured()) {
     await admin.from("credit_mail_audit").insert({
@@ -253,6 +280,14 @@ async function fulfillPaidLetter(
         state: mailing.recipient_state,
         zip: mailing.recipient_zip,
       },
+      from: postalAddressFrom({
+        name: mailing.return_name,
+        line1: mailing.return_line1,
+        line2: mailing.return_line2,
+        city: mailing.return_city,
+        state: mailing.return_state,
+        zip: mailing.return_zip,
+      }),
     });
     const status = letter.trackingNumber ? "in_transit" : "printing";
     const responseDue = letter.expectedDeliveryDate

@@ -4,6 +4,7 @@ import {
   QuoteError,
   assertUsAddress,
   quoteMailing,
+  requireClientReturnAddress,
   sanitizeLetterHtml,
 } from "../_shared/credit-mail-policy.ts";
 
@@ -46,10 +47,12 @@ Deno.serve(async (req) => {
     const admin = createServiceClient();
     const { data: client, error: clientError } = await admin
       .from("clients")
-      .select("id")
+      .select("id, name, mailing_line1, mailing_line2, mailing_city, mailing_state, mailing_zip")
       .eq("id", clientId)
       .maybeSingle();
     if (clientError || !client) return jsonResponse({ error: "Client not found" }, 404);
+
+    const returnAddress = requireClientReturnAddress(client);
 
     const { data: mailing, error: insertError } = await admin
       .from("credit_mailings")
@@ -61,6 +64,12 @@ Deno.serve(async (req) => {
         recipient_city: String(body.recipient_city).trim(),
         recipient_state: state,
         recipient_zip: String(body.recipient_zip).trim(),
+        return_name: returnAddress.name,
+        return_line1: returnAddress.line1,
+        return_line2: returnAddress.line2,
+        return_city: returnAddress.city,
+        return_state: returnAddress.state,
+        return_zip: returnAddress.zip,
         page_count: quote.pageCount,
         postage_cents: quote.postageCents,
         certified_cents: quote.certifiedCents,
@@ -89,7 +98,8 @@ Deno.serve(async (req) => {
       client_id: clientId,
       actor_id: auth.user.id,
       action: "ready_to_mail",
-      detail: "Staff published a quote. Nothing is charged and nothing is printed.",
+      detail:
+        "Staff published a quote. The envelope return address is the client's mailing address copied onto this letter. Nothing is charged and nothing is printed.",
     });
 
     return jsonResponse({

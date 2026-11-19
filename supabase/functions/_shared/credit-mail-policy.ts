@@ -24,6 +24,12 @@ export const CUSTOMER_MAILING_COLUMNS = [
   "recipient_city",
   "recipient_state",
   "recipient_zip",
+  "return_name",
+  "return_line1",
+  "return_line2",
+  "return_city",
+  "return_state",
+  "return_zip",
   "page_count",
   "postage_cents",
   "certified_cents",
@@ -189,13 +195,28 @@ export function sanitizeLetterHtml(html: string): string {
   return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${stripped}</body></html>`;
 }
 
-export function assertUsAddress(input: {
-  name: string;
-  line1: string;
-  city: string;
-  state: string;
-  zip: string;
-}): void {
+export function assertUsAddress(
+  input: {
+    name: string;
+    line1: string;
+    city: string;
+    state: string;
+    zip: string;
+  },
+  role: "recipient" | "client" = "recipient",
+): void {
+  if (role === "client") {
+    if (input.name.trim().length < 2) throw new QuoteError("Client name is required");
+    if (input.line1.trim().length < 4) throw new QuoteError("Client street address is required");
+    if (input.city.trim().length < 2) throw new QuoteError("Client city is required");
+    if (!/^[A-Z]{2}$/.test(input.state.trim().toUpperCase())) {
+      throw new QuoteError("Client state must be two letters");
+    }
+    if (!/^\d{5}(-\d{4})?$/.test(input.zip.trim())) {
+      throw new QuoteError("Client ZIP code is invalid");
+    }
+    return;
+  }
   if (input.name.trim().length < 2) throw new QuoteError("Recipient name is required");
   if (input.line1.trim().length < 4) throw new QuoteError("Street address is required");
   if (input.city.trim().length < 2) throw new QuoteError("City is required");
@@ -203,6 +224,97 @@ export function assertUsAddress(input: {
     throw new QuoteError("State must be two letters");
   }
   if (!/^\d{5}(-\d{4})?$/.test(input.zip.trim())) throw new QuoteError("ZIP code is invalid");
+}
+
+/** Envelope return address. Line 2 may be empty. */
+export interface PostalAddress {
+  name: string;
+  line1: string;
+  line2: string | null;
+  city: string;
+  state: string;
+  zip: string;
+}
+
+export function postalAddressFrom(input: {
+  name?: string | null;
+  line1?: string | null;
+  line2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip?: string | null;
+}): PostalAddress {
+  return {
+    name: (input.name ?? "").trim(),
+    line1: (input.line1 ?? "").trim(),
+    line2: input.line2?.trim() ? input.line2.trim() : null,
+    city: (input.city ?? "").trim(),
+    state: (input.state ?? "").trim().toUpperCase(),
+    zip: (input.zip ?? "").trim(),
+  };
+}
+
+/** Null when the address can be printed on an envelope. */
+export function returnAddressIssue(input: {
+  name?: string | null;
+  line1?: string | null;
+  line2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip?: string | null;
+}): string | null {
+  const address = postalAddressFrom(input);
+  try {
+    assertUsAddress(address, "client");
+    return null;
+  } catch (error) {
+    if (error instanceof QuoteError) return error.message;
+    return "Client mailing address is incomplete";
+  }
+}
+
+/**
+ * The address copied onto a mailing at quote time. Staff cannot send a
+ * different return address in the prepare request.
+ */
+export function requireClientReturnAddress(client: {
+  name?: string | null;
+  mailing_line1?: string | null;
+  mailing_line2?: string | null;
+  mailing_city?: string | null;
+  mailing_state?: string | null;
+  mailing_zip?: string | null;
+}): PostalAddress {
+  const address = postalAddressFrom({
+    name: client.name,
+    line1: client.mailing_line1,
+    line2: client.mailing_line2,
+    city: client.mailing_city,
+    state: client.mailing_state,
+    zip: client.mailing_zip,
+  });
+  const issue = returnAddressIssue(address);
+  if (issue) {
+    throw new QuoteError(
+      `${issue}. Add it on the client record before preparing a quote. Nothing is charged and nothing is printed.`,
+    );
+  }
+  return address;
+}
+
+export function formatReturnAddress(input: {
+  name?: string | null;
+  line1?: string | null;
+  line2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip?: string | null;
+}): string {
+  const address = postalAddressFrom(input);
+  const lines = [address.name, address.line1];
+  if (address.line2) lines.push(address.line2);
+  lines.push(`${address.city}, ${address.state} ${address.zip}`);
+  return lines.join("\n");
 }
 
 export interface StripeEventLike {

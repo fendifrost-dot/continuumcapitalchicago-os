@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeEdgeFunction } from "@/lib/edge-functions";
+import { formatReturnAddress, returnAddressIssue } from "@/lib/credit-mail";
 import { useCurrentUser } from "@/lib/use-current-user";
 
 export const Route = createFileRoute("/_authenticated/mailing")({
@@ -29,7 +30,7 @@ function ThisMailingPage() {
         supabase
           .from("credit_mailings")
           .select(
-            "id, client_id, recipient_name, recipient_city, recipient_state, page_count, postage_cents, certified_cents, electronic_receipt_cents, handling_fee_cents, total_cents, status",
+            "id, client_id, recipient_name, recipient_city, recipient_state, return_name, return_line1, return_line2, return_city, return_state, return_zip, page_count, postage_cents, certified_cents, electronic_receipt_cents, handling_fee_cents, total_cents, status",
           )
           .in("client_id", clientIds)
           .in("status", ["awaiting_payment", "payment_failed"])
@@ -123,6 +124,14 @@ function ThisMailingPage() {
         ) : (
           data.mailings.map((mailing) => {
             const card = data.cards.find((item) => item.client_id === mailing.client_id);
+            const returnIssue = returnAddressIssue({
+              name: mailing.return_name,
+              line1: mailing.return_line1,
+              line2: mailing.return_line2,
+              city: mailing.return_city,
+              state: mailing.return_state,
+              zip: mailing.return_zip,
+            });
             return (
               <Card key={mailing.id}>
                 <CardHeader>
@@ -142,6 +151,28 @@ function ThisMailingPage() {
                     {mailing.recipient_city}, {mailing.recipient_state}. Certified mail with an
                     electronic return receipt. Continuum pays the postage. You pay Continuum.
                   </p>
+                  <div className="text-sm">
+                    <div className="text-xs uppercase tracking-wider text-muted-foreground">
+                      Return address
+                    </div>
+                    {returnIssue ? (
+                      <p className="text-destructive">
+                        This letter cannot be paid yet because the return address on file is
+                        incomplete.
+                      </p>
+                    ) : (
+                      <p className="whitespace-pre-line">
+                        {formatReturnAddress({
+                          name: mailing.return_name,
+                          line1: mailing.return_line1,
+                          line2: mailing.return_line2,
+                          city: mailing.return_city,
+                          state: mailing.return_state,
+                          zip: mailing.return_zip,
+                        })}
+                      </p>
+                    )}
+                  </div>
                   <MailingPrice quote={mailing} />
                   <p className="text-xs text-muted-foreground">
                     {card
@@ -154,7 +185,7 @@ function ThisMailingPage() {
                   </p>
                   <Button
                     onClick={() => pay(mailing.id, Boolean(card?.last4))}
-                    disabled={busyId === mailing.id}
+                    disabled={busyId === mailing.id || Boolean(returnIssue)}
                   >
                     {busyId === mailing.id
                       ? "Working…"
