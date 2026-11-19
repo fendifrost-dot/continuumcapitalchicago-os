@@ -19,36 +19,24 @@ export interface LobLetterResult {
   url: string | null;
 }
 
-function fromAddress(): LobAddress | null {
-  const name = Deno.env.get("LOB_FROM_NAME") ?? "";
-  const line1 = Deno.env.get("LOB_FROM_LINE1") ?? "";
-  const city = Deno.env.get("LOB_FROM_CITY") ?? "";
-  const state = Deno.env.get("LOB_FROM_STATE") ?? "";
-  const zip = Deno.env.get("LOB_FROM_ZIP") ?? "";
-  if (!name || !line1 || !city || !state || !zip) return null;
-  return {
-    name,
-    line1,
-    line2: Deno.env.get("LOB_FROM_LINE2") || null,
-    city,
-    state,
-    zip,
-  };
-}
-
+/** A usable Lob key is enough. The envelope return address comes from the mailing. */
 export function lobConfigured(): boolean {
   const key = Deno.env.get("LOB_API_KEY") ?? "";
-  return (key.startsWith("test_") || key.startsWith("live_")) && fromAddress() !== null;
+  return key.startsWith("test_") || key.startsWith("live_");
 }
 
 export async function submitCertifiedLetter(input: {
   mailingId: string;
   to: LobAddress;
+  from: LobAddress;
   html: string;
 }): Promise<LobLetterResult> {
   const key = Deno.env.get("LOB_API_KEY") ?? "";
-  const from = fromAddress();
-  if (!key || !from) throw new Error("Lob is not configured");
+  const from = input.from;
+  if (!lobConfigured()) throw new Error("Lob is not configured");
+  if (!from?.name || !from.line1 || !from.city || !from.state || !from.zip) {
+    throw new Error("Client return address is required");
+  }
 
   const body = {
     description: `Certified dispute letter ${input.mailingId}`,

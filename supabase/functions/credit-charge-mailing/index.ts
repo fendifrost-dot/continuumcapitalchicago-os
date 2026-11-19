@@ -1,5 +1,6 @@
 import { createServiceClient, requireUser } from "../_shared/client.ts";
 import { jsonResponse, handleCors } from "../_shared/cors.ts";
+import { returnAddressIssue } from "../_shared/credit-mail-policy.ts";
 import { createStripeClient } from "../_shared/stripe-credit.ts";
 
 Deno.serve(async (req) => {
@@ -23,14 +24,41 @@ Deno.serve(async (req) => {
   );
   if (isInternal) return jsonResponse({ error: "Clients confirm their own letters" }, 403);
 
-  const { data: mailing } = await auth.supabase
+  const { data: mailing, error: mailingError } = await auth.supabase
     .from("credit_mailings")
-    .select("id, client_id, status, total_cents")
+    .select(
+      "id, client_id, status, total_cents, return_name, return_line1, return_line2, return_city, return_state, return_zip",
+    )
     .eq("id", mailingId)
     .maybeSingle();
+  if (mailingError) return jsonResponse({ error: "Could not read the letter" }, 500);
   if (!mailing) return jsonResponse({ error: "Letter not found" }, 404);
   if (mailing.status !== "awaiting_payment" && mailing.status !== "payment_failed") {
     return jsonResponse({ error: "This letter is not waiting for payment" }, 409);
+  }
+  const returnIssue = returnAddressIssue({
+    name: mailing.return_name,
+    line1: mailing.return_line1,
+    line2: mailing.return_line2,
+    city: mailing.return_city,
+    state: mailing.return_state,
+    zip: mailing.return_zip,
+  });
+  if (returnIssue) {
+    const admin = createServiceClient();
+    await admin.from("credit_mail_audit").insert({
+      mailing_id: mailing.id,
+      client_id: mailing.client_id,
+      actor_id: auth.user.id,
+      action: "return_address_incomplete",
+      detail: `${returnIssue}. The card was not charged and Lob was not called.`,
+    });
+    return jsonResponse(
+      {
+        error: `${returnIssue}. This letter cannot be paid until the client's return address is on the mailing.`,
+      },
+      409,
+    );
   }
 
   const stripe = createStripeClient();

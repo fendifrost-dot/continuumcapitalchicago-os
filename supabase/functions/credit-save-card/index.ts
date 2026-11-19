@@ -1,7 +1,7 @@
 import { createServiceClient, requireUser } from "../_shared/client.ts";
 import { jsonResponse, handleCors } from "../_shared/cors.ts";
 import { appOrigin } from "../_shared/credit-origin.ts";
-import { integrationIdentifier } from "../_shared/credit-mail-policy.ts";
+import { integrationIdentifier, returnAddressIssue } from "../_shared/credit-mail-policy.ts";
 import { createStripeClient } from "../_shared/stripe-credit.ts";
 
 Deno.serve(async (req) => {
@@ -41,6 +41,46 @@ Deno.serve(async (req) => {
   if (isInternal) return jsonResponse({ error: "Clients save their own card" }, 403);
 
   const admin = createServiceClient();
+
+  if (mailingId) {
+    const { data: pending, error: pendingError } = await auth.supabase
+      .from("credit_mailings")
+      .select(
+        "id, status, client_id, return_name, return_line1, return_line2, return_city, return_state, return_zip",
+      )
+      .eq("id", mailingId)
+      .maybeSingle();
+    if (pendingError) return jsonResponse({ error: "Could not read the letter" }, 500);
+    if (!pending || pending.client_id !== clientId)
+      return jsonResponse({ error: "Letter not found" }, 404);
+    if (pending.status !== "awaiting_payment" && pending.status !== "payment_failed") {
+      return jsonResponse({ error: "This letter is not waiting for payment" }, 409);
+    }
+    const returnIssue = returnAddressIssue({
+      name: pending.return_name,
+      line1: pending.return_line1,
+      line2: pending.return_line2,
+      city: pending.return_city,
+      state: pending.return_state,
+      zip: pending.return_zip,
+    });
+    if (returnIssue) {
+      await admin.from("credit_mail_audit").insert({
+        mailing_id: pending.id,
+        client_id: clientId,
+        actor_id: auth.user.id,
+        action: "return_address_incomplete",
+        detail: `${returnIssue}. Checkout was not opened and Lob was not called.`,
+      });
+      return jsonResponse(
+        {
+          error: `${returnIssue}. This letter cannot be paid until the client's return address is on the mailing.`,
+        },
+        409,
+      );
+    }
+  }
+
   const { data: client } = await admin
     .from("clients")
     .select("name, email")

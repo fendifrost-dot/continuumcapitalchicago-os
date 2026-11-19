@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { logActivity } from "@/lib/activity";
+import { returnAddressIssue } from "@/lib/credit-mail";
 import { formatSupabaseError } from "@/lib/supabase-errors";
 
 const ENTITY_TYPES = [
@@ -58,6 +59,11 @@ export function ClientFormDialog({
   const [phone, setPhone] = useState(client?.phone ?? "");
   const [status, setStatus] = useState(client?.status ?? "prospect");
   const [notes, setNotes] = useState(client?.notes ?? "");
+  const [mailLine1, setMailLine1] = useState("");
+  const [mailLine2, setMailLine2] = useState("");
+  const [mailCity, setMailCity] = useState("");
+  const [mailState, setMailState] = useState("");
+  const [mailZip, setMailZip] = useState("");
   const [saving, setSaving] = useState(false);
 
   // Optional first company (new clients only)
@@ -68,8 +74,21 @@ export function ClientFormDialog({
   const [coIndustry, setCoIndustry] = useState("");
 
   const reset = () => {
-    setName(""); setEmail(""); setPhone(""); setStatus("prospect"); setNotes("");
-    setAddCompany(false); setCoName(""); setCoEntity("llc"); setCoEin(""); setCoIndustry("");
+    setName("");
+    setEmail("");
+    setPhone("");
+    setStatus("prospect");
+    setNotes("");
+    setMailLine1("");
+    setMailLine2("");
+    setMailCity("");
+    setMailState("");
+    setMailZip("");
+    setAddCompany(false);
+    setCoName("");
+    setCoEntity("llc");
+    setCoEin("");
+    setCoIndustry("");
   };
 
   const handleSave = async () => {
@@ -81,6 +100,23 @@ export function ClientFormDialog({
       toast.error("Company legal name is required (or turn off “Add a company”)");
       return;
     }
+    const mailingTouched = [mailLine1, mailLine2, mailCity, mailState, mailZip].some((value) =>
+      value.trim(),
+    );
+    if (mailingTouched) {
+      const issue = returnAddressIssue({
+        name,
+        line1: mailLine1,
+        line2: mailLine2,
+        city: mailCity,
+        state: mailState,
+        zip: mailZip,
+      });
+      if (issue) {
+        toast.error(`${issue}. Leave the mailing address blank, or complete every line.`);
+        return;
+      }
+    }
     setSaving(true);
     const payload = {
       name: name.trim(),
@@ -88,6 +124,15 @@ export function ClientFormDialog({
       phone: phone || null,
       status: status as "prospect",
       notes: notes || null,
+      ...(!client || mailingTouched
+        ? {
+            mailing_line1: mailLine1.trim() || null,
+            mailing_line2: mailLine2.trim() || null,
+            mailing_city: mailCity.trim() || null,
+            mailing_state: mailState.trim().toUpperCase() || null,
+            mailing_zip: mailZip.trim() || null,
+          }
+        : {}),
     };
 
     if (client) {
@@ -163,7 +208,13 @@ export function ClientFormDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) reset();
+        onOpenChange(v);
+      }}
+    >
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{client ? "Edit client" : "New client"}</DialogTitle>
@@ -201,6 +252,37 @@ export function ClientFormDialog({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div className="space-y-3 rounded-lg border p-3">
+            <div>
+              <Label className="mb-0">Mailing address</Label>
+              <p className="text-[11px] text-muted-foreground">
+                Optional here. Dispute letters are mailed from this address, not from a company
+                address. A quote is blocked until it is complete.
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Street</Label>
+              <Input value={mailLine1} onChange={(e) => setMailLine1(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Line 2</Label>
+              <Input value={mailLine2} onChange={(e) => setMailLine2(e.target.value)} />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label>City</Label>
+                <Input value={mailCity} onChange={(e) => setMailCity(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>State</Label>
+                <Input value={mailState} onChange={(e) => setMailState(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>ZIP</Label>
+                <Input value={mailZip} onChange={(e) => setMailZip(e.target.value)} />
+              </div>
+            </div>
           </div>
           <div className="space-y-1.5">
             <Label>Notes</Label>
@@ -246,7 +328,11 @@ export function ClientFormDialog({
                     </div>
                     <div className="space-y-1.5">
                       <Label>EIN (optional)</Label>
-                      <Input value={coEin} onChange={(e) => setCoEin(e.target.value)} placeholder="99-1234567" />
+                      <Input
+                        value={coEin}
+                        onChange={(e) => setCoEin(e.target.value)}
+                        placeholder="99-1234567"
+                      />
                     </div>
                   </div>
                   <div className="space-y-1.5">

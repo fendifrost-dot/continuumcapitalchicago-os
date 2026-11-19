@@ -19,6 +19,8 @@ import {
   isCustomerLetterStatus,
   letterSentence,
   quoteMailing,
+  requireClientReturnAddress,
+  returnAddressIssue,
 } from "./credit-mail-policy.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -202,9 +204,69 @@ test("the charge function never calls Lob", () => {
     assert.equal(source.includes("api.lob.com"), false);
     assert.equal(source.includes("submitCertifiedLetter"), false);
     assert.equal(source.includes("LOB_API_KEY"), false);
+    assert.equal(source.includes("LOB_FROM_"), false);
   }
   const webhook = readFileSync(join(here, "../stripe-credit-webhook/index.ts"), "utf8");
   assert.equal(webhook.includes("submitCertifiedLetter"), true);
+  assert.ok(
+    webhook.indexOf("returnAddressIssue({") < webhook.lastIndexOf("submitCertifiedLetter({"),
+  );
+  assert.ok(charge.indexOf("returnAddressIssue({") < charge.indexOf("paymentIntents.create"));
+  const paymentCheckout = save.lastIndexOf("checkout.sessions.create");
+  assert.ok(save.indexOf("returnAddressIssue({") < paymentCheckout);
+});
+
+test("a quote copies the client mailing address and refuses an incomplete one", () => {
+  const address = requireClientReturnAddress({
+    name: "  Jane Q. Client ",
+    mailing_line1: "123 Main Street",
+    mailing_line2: " Apt 4 ",
+    mailing_city: "Chicago",
+    mailing_state: "il",
+    mailing_zip: "60601",
+  });
+  assert.deepEqual(address, {
+    name: "Jane Q. Client",
+    line1: "123 Main Street",
+    line2: "Apt 4",
+    city: "Chicago",
+    state: "IL",
+    zip: "60601",
+  });
+
+  assert.equal(
+    returnAddressIssue({ name: "Jane Q. Client", line1: "", city: "", state: "", zip: "" }),
+    "Client street address is required",
+  );
+  assert.equal(
+    returnAddressIssue({
+      name: "Jane Q. Client",
+      line1: "123 Main Street",
+      city: "Chicago",
+      state: "Illinois",
+      zip: "60601",
+    }),
+    "Client state must be two letters",
+  );
+  assert.throws(
+    () => requireClientReturnAddress({ name: "Jane Q. Client" }),
+    /Nothing is charged and nothing is printed/,
+  );
+
+  const prepare = readFileSync(join(here, "../credit-prepare-mailing/index.ts"), "utf8");
+  assert.ok(prepare.indexOf("requireClientReturnAddress") < prepare.indexOf(".insert("));
+  assert.equal(prepare.includes("return_name: returnAddress.name"), true);
+  assert.equal(prepare.includes("body.return_"), false);
+});
+
+test("Lob uses the mailing return address and does not read a firm from-address", () => {
+  const lob = readFileSync(join(here, "lob.ts"), "utf8");
+  assert.equal(lob.includes("LOB_FROM_"), false);
+  assert.equal(lob.includes("input.from"), true);
+  assert.match(lob, /key\.startsWith\("test_"\) \|\| key\.startsWith\("live_"\)/);
+  const webhook = readFileSync(join(here, "../stripe-credit-webhook/index.ts"), "utf8");
+  assert.equal(webhook.includes("from: postalAddressFrom"), true);
+  assert.equal(webhook.includes("LOB_FROM_"), false);
 });
 
 test("customer pages do not query the staff ledger or hold a guardian key", () => {
@@ -214,6 +276,7 @@ test("customer pages do not query the staff ledger or hold a guardian key", () =
     "routes/_authenticated/letters.tsx",
     "routes/_authenticated/mailing.tsx",
     "components/credit-file-staff.tsx",
+    "components/client-mailing-address.tsx",
   ];
   for (const file of files) {
     const source = readFileSync(join(root, file), "utf8");

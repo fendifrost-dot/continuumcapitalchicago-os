@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { DocumentUpload, getDocumentUrl } from "@/components/document-upload";
 import { ActivityTimeline } from "@/components/activity-timeline";
+import { ClientMailingAddress } from "@/components/client-mailing-address";
 import { CreditFileStaff } from "@/components/credit-file-staff";
 import { supabase } from "@/integrations/supabase/client";
 import { currency, formatDate, formatDateTime } from "@/lib/format";
@@ -120,6 +121,14 @@ function ClientDetail() {
                 </CardContent>
               </Card>
             </div>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Mailing address</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ClientMailingAddress key={id} clientId={id} />
+              </CardContent>
+            </Card>
             {client?.notes && (
               <Card>
                 <CardHeader>

@@ -172,6 +172,11 @@ export type Database = {
           created_by: string | null
           email: string | null
           id: string
+          mailing_city: string | null
+          mailing_line1: string | null
+          mailing_line2: string | null
+          mailing_state: string | null
+          mailing_zip: string | null
           name: string
           notes: string | null
           phone: string | null
@@ -184,6 +189,11 @@ export type Database = {
           created_by?: string | null
           email?: string | null
           id?: string
+          mailing_city?: string | null
+          mailing_line1?: string | null
+          mailing_line2?: string | null
+          mailing_state?: string | null
+          mailing_zip?: string | null
           name: string
           notes?: string | null
           phone?: string | null
@@ -196,6 +206,11 @@ export type Database = {
           created_by?: string | null
           email?: string | null
           id?: string
+          mailing_city?: string | null
+          mailing_line1?: string | null
+          mailing_line2?: string | null
+          mailing_state?: string | null
+          mailing_zip?: string | null
           name?: string
           notes?: string | null
           phone?: string | null
@@ -526,6 +541,12 @@ export type Database = {
           recipient_state: string
           recipient_zip: string
           response_due_on: string | null
+          return_city: string | null
+          return_line1: string | null
+          return_line2: string | null
+          return_name: string | null
+          return_state: string | null
+          return_zip: string | null
           status: string
           total_cents: number
           tracking_number: string | null
@@ -551,6 +572,12 @@ export type Database = {
           recipient_state: string
           recipient_zip: string
           response_due_on?: string | null
+          return_city?: string | null
+          return_line1?: string | null
+          return_line2?: string | null
+          return_name?: string | null
+          return_state?: string | null
+          return_zip?: string | null
           status: string
           total_cents: number
           tracking_number?: string | null
@@ -576,6 +603,12 @@ export type Database = {
           recipient_state?: string
           recipient_zip?: string
           response_due_on?: string | null
+          return_city?: string | null
+          return_line1?: string | null
+          return_line2?: string | null
+          return_name?: string | null
+          return_state?: string | null
+          return_zip?: string | null
           status?: string
           total_cents?: number
           tracking_number?: string | null

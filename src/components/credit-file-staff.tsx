@@ -2,6 +2,11 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import {
+  ClientMailingAddress,
+  SavedReturnAddress,
+  useClientReturnAddress,
+} from "@/components/client-mailing-address";
 import { MailingPrice } from "@/components/mailing-price";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,7 +22,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeEdgeFunction } from "@/lib/edge-functions";
-import { quoteMailing, QuoteError } from "@/lib/credit-mail";
+import { quoteMailing, QuoteError, returnAddressIssue } from "@/lib/credit-mail";
 import { useCurrentUser } from "@/lib/use-current-user";
 
 export function CreditFileStaff({ clientId }: { clientId: string }) {
@@ -40,6 +45,8 @@ export function CreditFileStaff({ clientId }: { clientId: string }) {
   const [letterHtml, setLetterHtml] = useState("");
   const [publishing, setPublishing] = useState(false);
   const [preparing, setPreparing] = useState(false);
+  const [addressDirty, setAddressDirty] = useState(false);
+  const { data: returnClient } = useClientReturnAddress(clientId);
 
   const { data: publication } = useQuery({
     queryKey: ["staff-credit-file", clientId],
@@ -103,7 +110,9 @@ export function CreditFileStaff({ clientId }: { clientId: string }) {
         status_sentence: line,
         next_date: (nextDate || publication?.next_date || null) as string | null,
         waiting_on: (waitingOn || publication?.waiting_on || "bureau") as
-          "bureau" | "furnisher" | "you",
+          | "bureau"
+          | "furnisher"
+          | "you",
         waiting_on_name: (waitingName || publication?.waiting_on_name || null) as string | null,
         needs_from_you: (needs || null) as string | null,
         published_by: user?.id ?? null,
@@ -119,7 +128,28 @@ export function CreditFileStaff({ clientId }: { clientId: string }) {
     toast.success("Published to the client file");
   };
 
+  const addressIssue = !returnClient
+    ? "The client record is still loading"
+    : returnAddressIssue({
+        name: returnClient.name,
+        line1: returnClient.mailing_line1,
+        line2: returnClient.mailing_line2,
+        city: returnClient.mailing_city,
+        state: returnClient.mailing_state,
+        zip: returnClient.mailing_zip,
+      });
+
   const readyToMail = async () => {
+    if (addressDirty) {
+      toast.error("Save the mailing address on the client record before preparing the quote.");
+      return;
+    }
+    if (addressIssue) {
+      toast.error(
+        `${addressIssue}. Add it on the client record before a quote. Nothing is charged and nothing is printed.`,
+      );
+      return;
+    }
     setPreparing(true);
     try {
       quoteMailing({
@@ -225,10 +255,16 @@ export function CreditFileStaff({ clientId }: { clientId: string }) {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-xs text-muted-foreground">
-            Postage lines start at the published Lob rates. Change them if Lob’s quote for this
+            Postage lines start at the published Lob rates. Change them if Lob's quote for this
             letter is different. The $5 handling fee stays. The customer pays before anything
-            prints.
+            prints. The envelope return address is the client, and the letter is not prepared while
+            that address is incomplete.
           </p>
+          <ClientMailingAddress
+            key={clientId}
+            clientId={clientId}
+            onDirtyChange={setAddressDirty}
+          />
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Recipient" value={recipientName} onChange={setRecipientName} />
             <Field label="Pages" value={pages} onChange={setPages} />
@@ -255,6 +291,13 @@ export function CreditFileStaff({ clientId }: { clientId: string }) {
               className="min-h-28"
             />
           </div>
+          <SavedReturnAddress client={returnClient ?? null} />
+          {addressDirty && (
+            <p className="text-sm text-destructive">
+              Save the mailing address before preparing this quote. Unsaved edits are not copied
+              onto the letter.
+            </p>
+          )}
           {preview && (
             <MailingPrice
               quote={{
@@ -268,7 +311,11 @@ export function CreditFileStaff({ clientId }: { clientId: string }) {
               }}
             />
           )}
-          <Button size="sm" onClick={readyToMail} disabled={preparing}>
+          <Button
+            size="sm"
+            onClick={readyToMail}
+            disabled={preparing || addressDirty || Boolean(addressIssue)}
+          >
             {preparing ? "Saving…" : "Ready to mail"}
           </Button>
         </CardContent>
