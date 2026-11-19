@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
 
   const { data: mailing } = await admin
     .from("credit_mailings")
-    .select("id, client_id, status, mailed_on, tracking_number, proof_on_file")
+    .select("id, client_id, status, mailed_on, tracking_number, proof_on_file, is_test")
     .eq("id", fulfillment.mailing_id)
     .maybeSingle();
   if (!mailing) return jsonResponse({ ok: true });
@@ -67,11 +67,13 @@ Deno.serve(async (req) => {
     })
     .eq("id", mailing.id);
 
+  const isTest = mailing.is_test === true;
   await admin.from("credit_mail_audit").insert({
     mailing_id: mailing.id,
     client_id: mailing.client_id,
     action: "tracking_updated",
-    detail: `Mail status ${update.status}.`,
+    is_test: isTest,
+    detail: isTest ? `Sandbox. Mail status ${update.status}.` : `Mail status ${update.status}.`,
   });
 
   return jsonResponse({ ok: true });

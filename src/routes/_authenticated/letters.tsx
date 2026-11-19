@@ -26,6 +26,7 @@ function LettersPage() {
           "id, client_id, recipient_name, status, customer_sentence, mailed_on, tracking_number, delivered_on, response_due_on, proof_on_file",
         )
         .in("client_id", clientIds)
+        .eq("is_test", false)
         .in("status", ["paid", "printing", "in_transit", "delivered"])
         .order("created_at", { ascending: false });
       if (error) throw error;

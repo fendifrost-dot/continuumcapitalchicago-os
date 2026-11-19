@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import {
@@ -22,10 +22,20 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeEdgeFunction } from "@/lib/edge-functions";
-import { quoteMailing, QuoteError, returnAddressIssue } from "@/lib/credit-mail";
+import {
+  FIRST_PAGE_ADDRESS_BLANK_INCHES,
+  LOB_INLINE_HTML_MAX,
+  MAX_ENCLOSURES,
+  PACKET_BUCKET,
+  PACKET_MAX_BYTES,
+  quoteMailing,
+  QuoteError,
+  returnAddressIssue,
+} from "@/lib/credit-mail";
 import { useCurrentUser } from "@/lib/use-current-user";
 
 export function CreditFileStaff({ clientId }: { clientId: string }) {
+  const queryClient = useQueryClient();
   const { data: user } = useCurrentUser();
   const [sentence, setSentence] = useState("");
   const [nextDate, setNextDate] = useState("");
@@ -43,8 +53,12 @@ export function CreditFileStaff({ clientId }: { clientId: string }) {
   const [certified, setCertified] = useState("");
   const [receipt, setReceipt] = useState("");
   const [letterHtml, setLetterHtml] = useState("");
+  const [packetFile, setPacketFile] = useState<File | null>(null);
+  const [enclosureFiles, setEnclosureFiles] = useState<File[]>([]);
+  const [fileKey, setFileKey] = useState(0);
   const [publishing, setPublishing] = useState(false);
   const [preparing, setPreparing] = useState(false);
+  const [testing, setTesting] = useState(false);
   const [addressDirty, setAddressDirty] = useState(false);
   const { data: returnClient } = useClientReturnAddress(clientId);
 
@@ -66,7 +80,7 @@ export function CreditFileStaff({ clientId }: { clientId: string }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("credit_mail_audit")
-        .select("id, action, detail, created_at, actor_id")
+        .select("id, action, detail, created_at, actor_id, is_test")
         .eq("client_id", clientId)
         .order("created_at", { ascending: false })
         .limit(12);
@@ -139,51 +153,135 @@ export function CreditFileStaff({ clientId }: { clientId: string }) {
         zip: returnClient.mailing_zip,
       });
 
-  const readyToMail = async () => {
+  const mailingBody = async () => {
     if (addressDirty) {
       toast.error("Save the mailing address on the client record before preparing the quote.");
-      return;
+      return null;
     }
     if (addressIssue) {
       toast.error(
         `${addressIssue}. Add it on the client record before a quote. Nothing is charged and nothing is printed.`,
       );
-      return;
+      return null;
     }
-    setPreparing(true);
+    if (packetFile && (letterHtml.trim() || enclosureFiles.length > 0)) {
+      toast.error(
+        "A packet PDF stands alone. Remove the letter text and enclosures, or remove the PDF.",
+      );
+      return null;
+    }
+    if (!packetFile && letterHtml.trim().length < 20) {
+      toast.error("Add the letter text or upload a packet PDF.");
+      return null;
+    }
+    if (
+      !packetFile &&
+      enclosureFiles.length === 0 &&
+      letterHtml.trim().length > LOB_INLINE_HTML_MAX
+    ) {
+      toast.error(
+        "Inline HTML is limited to 10,000 characters. Upload a packet PDF for a longer letter or for ID and proof of address.",
+      );
+      return null;
+    }
+    if (enclosureFiles.length > MAX_ENCLOSURES) {
+      toast.error(`A letter can include up to ${MAX_ENCLOSURES} enclosures.`);
+      return null;
+    }
+    const countFromPacket = Boolean(packetFile) || enclosureFiles.length > 0;
+    if (!countFromPacket) {
+      try {
+        quoteMailing({
+          pages: Number(pages),
+          postageCents: postage === "" ? undefined : Number(postage),
+          certifiedCents: certified === "" ? undefined : Number(certified),
+          electronicReceiptCents: receipt === "" ? undefined : Number(receipt),
+        });
+      } catch (error) {
+        toast.error(error instanceof QuoteError ? error.message : "Check the quote");
+        return null;
+      }
+    }
     try {
-      quoteMailing({
-        pages: Number(pages),
-        postageCents: postage === "" ? undefined : Number(postage),
-        certifiedCents: certified === "" ? undefined : Number(certified),
-        electronicReceiptCents: receipt === "" ? undefined : Number(receipt),
-      });
+      const packetPath = packetFile ? await stageMailFile(clientId, packetFile) : undefined;
+      const enclosurePaths: string[] = [];
+      for (const file of enclosureFiles) enclosurePaths.push(await stageMailFile(clientId, file));
+      return {
+        client_id: clientId,
+        recipient_name: recipientName,
+        recipient_line1: line1,
+        recipient_line2: line2 || undefined,
+        recipient_city: city,
+        recipient_state: state,
+        recipient_zip: zip,
+        page_count: countFromPacket ? undefined : Number(pages),
+        postage_cents: postage === "" ? undefined : Number(postage),
+        certified_cents: certified === "" ? undefined : Number(certified),
+        electronic_receipt_cents: receipt === "" ? undefined : Number(receipt),
+        letter_html: packetFile ? undefined : letterHtml,
+        packet_storage_path: packetPath,
+        enclosure_storage_paths: enclosurePaths.length ? enclosurePaths : undefined,
+      };
     } catch (error) {
+      toast.error(error instanceof Error ? error.message : "The file could not be uploaded.");
+      return null;
+    }
+  };
+
+  const readyToMail = async () => {
+    setPreparing(true);
+    const body = await mailingBody();
+    if (!body) {
       setPreparing(false);
-      toast.error(error instanceof QuoteError ? error.message : "Check the quote");
       return;
     }
-    const { error } = await invokeEdgeFunction("credit-prepare-mailing", {
-      client_id: clientId,
-      recipient_name: recipientName,
-      recipient_line1: line1,
-      recipient_line2: line2 || undefined,
-      recipient_city: city,
-      recipient_state: state,
-      recipient_zip: zip,
-      page_count: Number(pages),
-      postage_cents: postage === "" ? undefined : Number(postage),
-      certified_cents: certified === "" ? undefined : Number(certified),
-      electronic_receipt_cents: receipt === "" ? undefined : Number(receipt),
-      letter_html: letterHtml,
-    });
+    const { data, error } = await invokeEdgeFunction<{ page_count?: number }>(
+      "credit-prepare-mailing",
+      body,
+    );
     setPreparing(false);
     if (error) {
       toast.error(error);
       return;
     }
-    toast.success("The client can pay this letter. Nothing has been printed.");
+    toast.success(
+      data?.page_count
+        ? `Quoted ${data.page_count} page${data.page_count === 1 ? "" : "s"}. The client can pay this letter. Nothing has been printed.`
+        : "The client can pay this letter. Nothing has been printed.",
+    );
     setLetterHtml("");
+    setPacketFile(null);
+    setEnclosureFiles([]);
+    setFileKey((current) => current + 1);
+    await queryClient.invalidateQueries({ queryKey: ["staff-credit-audit", clientId] });
+  };
+
+  const sendSandbox = async () => {
+    setTesting(true);
+    const body = await mailingBody();
+    if (!body) {
+      setTesting(false);
+      return;
+    }
+    const { data, error } = await invokeEdgeFunction<{ page_count?: number; sandbox?: boolean }>(
+      "credit-test-mailing",
+      body,
+    );
+    setTesting(false);
+    if (error) {
+      toast.error(error);
+      return;
+    }
+    toast.success(
+      data?.sandbox
+        ? `Sandbox payment started${data.page_count ? ` for ${data.page_count} pages` : ""}. Lob test mode runs only after Stripe confirms it. Check the mail audit.`
+        : "Sandbox payment started. Check the mail audit.",
+    );
+    setLetterHtml("");
+    setPacketFile(null);
+    setEnclosureFiles([]);
+    setFileKey((current) => current + 1);
+    await queryClient.invalidateQueries({ queryKey: ["staff-credit-audit", clientId] });
   };
 
   return (
@@ -267,7 +365,12 @@ export function CreditFileStaff({ clientId }: { clientId: string }) {
           />
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Recipient" value={recipientName} onChange={setRecipientName} />
-            <Field label="Pages" value={pages} onChange={setPages} />
+            <Field
+              label="Pages"
+              value={pages}
+              onChange={setPages}
+              disabled={Boolean(packetFile) || enclosureFiles.length > 0}
+            />
             <Field label="Street" value={line1} onChange={setLine1} />
             <Field label="Line 2" value={line2} onChange={setLine2} />
             <Field label="City" value={city} onChange={setCity} />
@@ -287,9 +390,44 @@ export function CreditFileStaff({ clientId }: { clientId: string }) {
             <Textarea
               value={letterHtml}
               onChange={(event) => setLetterHtml(event.target.value)}
-              placeholder="The letter the printer will use. The client does not see this text."
+              placeholder="The letter the printer will use. The client does not see this text. No Continuum letterhead."
               className="min-h-28"
+              disabled={Boolean(packetFile)}
             />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Packet PDF</Label>
+            <Input
+              key={`packet-${fileKey}`}
+              type="file"
+              accept="application/pdf,.pdf"
+              onChange={(event) => setPacketFile(event.target.files?.[0] ?? null)}
+            />
+            <p className="text-xs text-muted-foreground">
+              One black-and-white US Letter PDF, up to 6 pages. Leave the top{" "}
+              {FIRST_PAGE_ADDRESS_BLANK_INCHES} inches of the first page blank so the window can
+              show the recipient and the client's return address. Later pages are enclosures such as
+              ID and proof of address. Page count and postage come from the PDF.
+              {packetFile ? ` Selected ${packetFile.name}.` : ""}
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Or letter text plus enclosure files</Label>
+            <Input
+              key={`enclosures-${fileKey}`}
+              type="file"
+              accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png"
+              multiple
+              disabled={Boolean(packetFile)}
+              onChange={(event) => setEnclosureFiles(Array.from(event.target.files ?? []))}
+            />
+            <p className="text-xs text-muted-foreground">
+              Up to {MAX_ENCLOSURES} PDF, JPEG, or PNG files. They are added after the letter text
+              on their own pages. The letter is not given a Continuum letterhead.
+              {enclosureFiles.length
+                ? ` Selected ${enclosureFiles.map((file) => file.name).join(", ")}.`
+                : ""}
+            </p>
           </div>
           <SavedReturnAddress client={returnClient ?? null} />
           {addressDirty && (
@@ -298,26 +436,51 @@ export function CreditFileStaff({ clientId }: { clientId: string }) {
               onto the letter.
             </p>
           )}
-          {preview && (
-            <MailingPrice
-              quote={{
-                ...preview,
-                page_count: preview.pageCount,
-                postage_cents: preview.postageCents,
-                certified_cents: preview.certifiedCents,
-                electronic_receipt_cents: preview.electronicReceiptCents,
-                handling_fee_cents: preview.handlingFeeCents,
-                total_cents: preview.totalCents,
-              }}
-            />
+          {packetFile || enclosureFiles.length > 0 ? (
+            <p className="text-xs text-muted-foreground">
+              Postage uses the PDF page count, at the published per-page rate, once this is saved.
+            </p>
+          ) : (
+            preview && (
+              <MailingPrice
+                quote={{
+                  ...preview,
+                  page_count: preview.pageCount,
+                  postage_cents: preview.postageCents,
+                  certified_cents: preview.certifiedCents,
+                  electronic_receipt_cents: preview.electronicReceiptCents,
+                  handling_fee_cents: preview.handlingFeeCents,
+                  total_cents: preview.totalCents,
+                }}
+              />
+            )
           )}
-          <Button
-            size="sm"
-            onClick={readyToMail}
-            disabled={preparing || addressDirty || Boolean(addressIssue)}
-          >
-            {preparing ? "Saving…" : "Ready to mail"}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              onClick={readyToMail}
+              disabled={preparing || testing || addressDirty || Boolean(addressIssue)}
+            >
+              {preparing ? "Saving…" : "Ready to mail"}
+            </Button>
+          </div>
+          <div className="space-y-2 rounded-md border border-dashed border-border p-3">
+            <p className="text-sm font-medium">Send test (sandbox)</p>
+            <p className="text-xs text-muted-foreground">
+              Staff only. This prepares the letter, pays with Stripe's test card, and sends it to
+              Lob test mode after Stripe confirms the payment. It is refused when the Stripe key or
+              the Lob key is live. The client does not confirm it. The return address stays the
+              client's. No live card is charged.
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={sendSandbox}
+              disabled={preparing || testing || addressDirty || Boolean(addressIssue)}
+            >
+              {testing ? "Sending test…" : "Send test (sandbox)"}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
@@ -331,7 +494,10 @@ export function CreditFileStaff({ clientId }: { clientId: string }) {
           ) : (
             audit.map((row) => (
               <div key={row.id} className="border-b border-border py-2 last:border-0">
-                <div className="font-medium">{row.action.replaceAll("_", " ")}</div>
+                <div className="font-medium">
+                  {row.is_test ? "Sandbox. " : ""}
+                  {row.action.replaceAll("_", " ")}
+                </div>
                 <div className="text-muted-foreground">{row.detail}</div>
               </div>
             ))
@@ -347,11 +513,13 @@ function Field({
   value,
   onChange,
   placeholder,
+  disabled,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  disabled?: boolean;
 }) {
   return (
     <div className="space-y-1.5">
@@ -359,8 +527,33 @@ function Field({
       <Input
         value={value}
         placeholder={placeholder}
+        disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
       />
     </div>
   );
+}
+
+async function stageMailFile(clientId: string, file: File): Promise<string> {
+  const contentType = contentTypeFor(file);
+  if (!contentType) throw new Error("Upload a PDF, JPEG, or PNG.");
+  if (file.size > PACKET_MAX_BYTES) throw new Error("Each file must be 20 MB or smaller.");
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-80);
+  const path = `${clientId}/staging/${crypto.randomUUID()}-${safeName}`;
+  const { error } = await supabase.storage.from(PACKET_BUCKET).upload(path, file, {
+    contentType,
+    upsert: false,
+  });
+  if (error) throw new Error(error.message);
+  return path;
+}
+
+function contentTypeFor(file: File): string | null {
+  const name = file.name.toLowerCase();
+  if (file.type === "application/pdf" || name.endsWith(".pdf")) return "application/pdf";
+  if (file.type === "image/png" || name.endsWith(".png")) return "image/png";
+  if (file.type === "image/jpeg" || name.endsWith(".jpg") || name.endsWith(".jpeg")) {
+    return "image/jpeg";
+  }
+  return null;
 }

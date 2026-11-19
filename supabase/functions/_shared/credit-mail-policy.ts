@@ -15,6 +15,25 @@ export const MAX_COMPONENT_CENTS = 5_000;
 export const MAX_TOTAL_CENTS = 20_000;
 export const MAX_PAGES = 6;
 
+/** Lob rejects an inline HTML string longer than this. A URL or PDF is not capped this way. */
+export const LOB_INLINE_HTML_MAX = 10_000;
+
+/**
+ * Lob prints the recipient and the client's return address in the top window
+ * of page 1. `insert_blank_page` would insert an extra sheet and postage for
+ * a page that is not in the packet. Packets we render leave the top of page 1
+ * blank instead. An uploaded packet PDF must do the same.
+ */
+export const LOB_ADDRESS_PLACEMENT = "top_first_page" as const;
+
+/** Blank band at the top of page 1, in inches, for the double-window envelope. */
+export const FIRST_PAGE_ADDRESS_BLANK_INCHES = 2.75;
+
+export const PACKET_BUCKET = "credit-mail-packets";
+export const PACKET_MAX_BYTES = 20 * 1024 * 1024;
+export const PACKET_SIGNED_URL_SECONDS = 300;
+export const MAX_ENCLOSURES = 5;
+
 export const CUSTOMER_MAILING_COLUMNS = [
   "id",
   "client_id",
@@ -55,6 +74,7 @@ export const FORBIDDEN_CUSTOMER_FIELDS = [
   "stripe_payment_intent_id",
   "lob_letter_id",
   "lob_api_key",
+  "packet_storage_path",
   "payment_method",
 ] as const;
 
@@ -193,6 +213,138 @@ export function sanitizeLetterHtml(html: string): string {
   }
   if (/<html[\s>]/i.test(stripped)) return stripped;
   return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${stripped}</body></html>`;
+}
+
+/** Plain text for a rendered packet. No firm name is added. */
+export function letterHtmlToPlainText(html: string): string {
+  const named = html
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|h[1-6]|tr|li|blockquote)>/gi, "\n")
+    .replace(/<li[^>]*>/gi, "- ")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&#(\d+);/g, (_, digits: string) => String.fromCodePoint(Number(digits)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex: string) => String.fromCodePoint(parseInt(hex, 16)));
+  return named
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\u2013\u2014]/g, "-")
+    .replace(/\u00A0/g, " ")
+    .replace(/[^\n\x20-\x7E\xA0-\xFF]/g, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+export type MailBodyPlan =
+  | { kind: "inline_html" }
+  | { kind: "uploaded_pdf" }
+  | { kind: "rendered_pdf" };
+
+/**
+ * Short HTML still goes to Lob inline. A packet PDF, or a letter plus
+ * enclosure files, is stored and sent as a PDF URL. HTML over Lob's inline
+ * cap is refused so a long letter is not silently flattened.
+ */
+export function planMailBody(input: {
+  letterHtml: string | null;
+  hasPacketPdf: boolean;
+  enclosureCount: number;
+}): MailBodyPlan {
+  if (input.enclosureCount > MAX_ENCLOSURES) {
+    throw new QuoteError(`A letter can include up to ${MAX_ENCLOSURES} enclosures.`);
+  }
+  if (input.hasPacketPdf && (input.enclosureCount > 0 || input.letterHtml)) {
+    throw new QuoteError(
+      "A packet PDF already includes the letter and any enclosures. Remove the letter text and enclosure files, or remove the PDF.",
+    );
+  }
+  if (input.hasPacketPdf) return { kind: "uploaded_pdf" };
+  if (input.enclosureCount > 0) {
+    if (!input.letterHtml) throw new QuoteError("Add the letter text before attaching enclosures.");
+    return { kind: "rendered_pdf" };
+  }
+  if (!input.letterHtml) throw new QuoteError("Add the letter text or upload a packet PDF.");
+  if (input.letterHtml.length > LOB_INLINE_HTML_MAX) {
+    throw new QuoteError(
+      "Inline HTML is limited to 10,000 characters. Upload a packet PDF for a longer letter or for ID and proof of address.",
+    );
+  }
+  return { kind: "inline_html" };
+}
+
+export function assertStagingPath(clientId: string, path: string): string {
+  const trimmed = path.trim();
+  if (
+    !trimmed ||
+    trimmed.includes("..") ||
+    trimmed.includes("\\") ||
+    trimmed.startsWith("/") ||
+    trimmed.includes("//")
+  ) {
+    throw new QuoteError("The uploaded file path is invalid.");
+  }
+  const prefix = `${clientId}/staging/`;
+  if (!trimmed.startsWith(prefix)) {
+    throw new QuoteError("The uploaded file is not in this client's folder.");
+  }
+  if (!/\.(pdf|png|jpe?g)$/i.test(trimmed)) {
+    throw new QuoteError("Upload a PDF, JPEG, or PNG.");
+  }
+  return trimmed;
+}
+
+export function finalPacketPath(clientId: string, mailingId: string): string {
+  return `${clientId}/${mailingId}.pdf`;
+}
+
+export function lobFileSource(input: {
+  packetStoragePath?: string | null;
+  letterHtml?: string | null;
+}): "packet_url" | "inline_html" {
+  if (input.packetStoragePath && input.packetStoragePath.trim()) return "packet_url";
+  const html = input.letterHtml ?? "";
+  if (html.length >= 20 && html.length <= LOB_INLINE_HTML_MAX) return "inline_html";
+  throw new QuoteError("This letter has no file that can be printed.");
+}
+
+export type RailMode = "test" | "live" | "absent";
+
+/**
+ * Prefix only. Callers must not log or return the key they passed in.
+ * An unrecognized secret is treated as live so the sandbox path refuses it.
+ */
+export function classifyStripeKey(key: string): RailMode {
+  const value = key.trim();
+  if (value.startsWith("sk_test_") || value.startsWith("rk_test_")) return "test";
+  if (value.startsWith("sk_") || value.startsWith("rk_")) return "live";
+  return "absent";
+}
+
+export function classifyLobKey(key: string): RailMode {
+  const value = key.trim();
+  if (value.startsWith("test_")) return "test";
+  if (value.startsWith("live_")) return "live";
+  if (value.length > 0) return "live";
+  return "absent";
+}
+
+/** Null when both keys are test keys. The message never includes a key. */
+export function sandboxRefusal(input: { stripe: RailMode; lob: RailMode }): string | null {
+  if (input.stripe === "live" || input.lob === "live") {
+    return "Sandbox send is refused while a live payment or mail key is in use.";
+  }
+  if (input.stripe !== "test" || input.lob !== "test") {
+    return "Sandbox send needs a Stripe test key and a Lob test key.";
+  }
+  return null;
 }
 
 export function assertUsAddress(
