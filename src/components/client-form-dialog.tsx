@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -25,6 +25,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { logActivity } from "@/lib/activity";
 import { returnAddressIssue } from "@/lib/credit-mail";
+import { payingClientWrite } from "@/lib/paying-client";
 import { formatSupabaseError } from "@/lib/supabase-errors";
 
 const ENTITY_TYPES = [
@@ -51,6 +52,13 @@ export function ClientFormDialog({
     phone?: string | null;
     status: string;
     notes?: string | null;
+    mailing_line1?: string | null;
+    mailing_line2?: string | null;
+    mailing_city?: string | null;
+    mailing_state?: string | null;
+    mailing_zip?: string | null;
+    is_paying_client?: boolean | null;
+    paying_note?: string | null;
   };
 }) {
   const qc = useQueryClient();
@@ -59,12 +67,15 @@ export function ClientFormDialog({
   const [phone, setPhone] = useState(client?.phone ?? "");
   const [status, setStatus] = useState(client?.status ?? "prospect");
   const [notes, setNotes] = useState(client?.notes ?? "");
-  const [mailLine1, setMailLine1] = useState("");
-  const [mailLine2, setMailLine2] = useState("");
-  const [mailCity, setMailCity] = useState("");
-  const [mailState, setMailState] = useState("");
-  const [mailZip, setMailZip] = useState("");
+  const [isPaying, setIsPaying] = useState(Boolean(client?.is_paying_client));
+  const [payingNote, setPayingNote] = useState(client?.paying_note ?? "");
+  const [mailLine1, setMailLine1] = useState(client?.mailing_line1 ?? "");
+  const [mailLine2, setMailLine2] = useState(client?.mailing_line2 ?? "");
+  const [mailCity, setMailCity] = useState(client?.mailing_city ?? "");
+  const [mailState, setMailState] = useState(client?.mailing_state ?? "");
+  const [mailZip, setMailZip] = useState(client?.mailing_zip ?? "");
   const [saving, setSaving] = useState(false);
+  const hydratedFor = useRef<string | null>(null);
 
   // Optional first company (new clients only)
   const [addCompany, setAddCompany] = useState(false);
@@ -79,6 +90,8 @@ export function ClientFormDialog({
     setPhone("");
     setStatus("prospect");
     setNotes("");
+    setIsPaying(false);
+    setPayingNote("");
     setMailLine1("");
     setMailLine2("");
     setMailCity("");
@@ -91,6 +104,33 @@ export function ClientFormDialog({
     setCoIndustry("");
   };
 
+  useEffect(() => {
+    const key = open ? (client?.id ?? "new") : null;
+    if (!open || !key) {
+      hydratedFor.current = null;
+      return;
+    }
+    if (hydratedFor.current === key) return;
+    hydratedFor.current = key;
+    setName(client?.name ?? "");
+    setEmail(client?.email ?? "");
+    setPhone(client?.phone ?? "");
+    setStatus(client?.status ?? "prospect");
+    setNotes(client?.notes ?? "");
+    setIsPaying(Boolean(client?.is_paying_client));
+    setPayingNote(client?.paying_note ?? "");
+    setMailLine1(client?.mailing_line1 ?? "");
+    setMailLine2(client?.mailing_line2 ?? "");
+    setMailCity(client?.mailing_city ?? "");
+    setMailState(client?.mailing_state ?? "");
+    setMailZip(client?.mailing_zip ?? "");
+    setAddCompany(false);
+    setCoName("");
+    setCoEntity("llc");
+    setCoEin("");
+    setCoIndustry("");
+  }, [open, client]);
+
   const handleSave = async () => {
     if (!name.trim()) {
       toast.error("Name is required");
@@ -100,10 +140,29 @@ export function ClientFormDialog({
       toast.error("Company legal name is required (or turn off “Add a company”)");
       return;
     }
-    const mailingTouched = [mailLine1, mailLine2, mailCity, mailState, mailZip].some((value) =>
-      value.trim(),
-    );
-    if (mailingTouched) {
+    const mailingPayload = {
+      mailing_line1: mailLine1.trim() || null,
+      mailing_line2: mailLine2.trim() || null,
+      mailing_city: mailCity.trim() || null,
+      mailing_state: mailState.trim().toUpperCase() || null,
+      mailing_zip: mailZip.trim() || null,
+    };
+    const storedMailing = {
+      mailing_line1: client?.mailing_line1?.trim() || null,
+      mailing_line2: client?.mailing_line2?.trim() || null,
+      mailing_city: client?.mailing_city?.trim() || null,
+      mailing_state: client?.mailing_state?.trim().toUpperCase() || null,
+      mailing_zip: client?.mailing_zip?.trim() || null,
+    };
+    const mailingChanged =
+      !client ||
+      mailingPayload.mailing_line1 !== storedMailing.mailing_line1 ||
+      mailingPayload.mailing_line2 !== storedMailing.mailing_line2 ||
+      mailingPayload.mailing_city !== storedMailing.mailing_city ||
+      mailingPayload.mailing_state !== storedMailing.mailing_state ||
+      mailingPayload.mailing_zip !== storedMailing.mailing_zip;
+    const mailingFilled = Object.values(mailingPayload).some((value) => value);
+    if (mailingChanged && mailingFilled) {
       const issue = returnAddressIssue({
         name,
         line1: mailLine1,
@@ -118,22 +177,46 @@ export function ClientFormDialog({
       }
     }
     setSaving(true);
+    const { data: auth } = await supabase.auth.getUser();
+    const actorId = auth.user?.id;
+    if (!actorId) {
+      toast.error("Session expired. Please sign in again.");
+      setSaving(false);
+      return;
+    }
+    let paying: ReturnType<typeof payingClientWrite>;
+    try {
+      paying = payingClientWrite({
+        isPaying,
+        note: payingNote,
+        actorId,
+        markedAt: new Date().toISOString(),
+        previous: client
+          ? {
+              is_paying_client: Boolean(client.is_paying_client),
+              paying_note: client.paying_note ?? null,
+            }
+          : null,
+      });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not save the paying client flag");
+      setSaving(false);
+      return;
+    }
     const payload = {
       name: name.trim(),
       email: email || null,
       phone: phone || null,
       status: status as "prospect",
       notes: notes || null,
-      ...(!client || mailingTouched
-        ? {
-            mailing_line1: mailLine1.trim() || null,
-            mailing_line2: mailLine2.trim() || null,
-            mailing_city: mailCity.trim() || null,
-            mailing_state: mailState.trim().toUpperCase() || null,
-            mailing_zip: mailZip.trim() || null,
-          }
-        : {}),
+      ...(paying ?? {}),
+      ...(mailingChanged ? mailingPayload : {}),
     };
+    const payingSummary = !paying
+      ? ""
+      : paying.is_paying_client
+        ? ". Marked as a paying client."
+        : ". Cleared the paying client flag.";
 
     if (client) {
       const { error } = await supabase.from("clients").update(payload).eq("id", client.id);
@@ -144,17 +227,16 @@ export function ClientFormDialog({
       }
       await logActivity({
         action: "client_updated",
-        summary: `Updated client ${name}`,
+        summary: `Updated client ${name}${payingSummary}`,
         entityType: "client",
         entityId: client.id,
         clientId: client.id,
       });
       toast.success("Client updated");
     } else {
-      const { data: user } = await supabase.auth.getUser();
       const { data, error } = await supabase
         .from("clients")
-        .insert({ ...payload, created_by: user.user?.id })
+        .insert({ ...payload, created_by: actorId })
         .select("id")
         .single();
       if (error) {
@@ -164,7 +246,7 @@ export function ClientFormDialog({
       }
       await logActivity({
         action: "client_created",
-        summary: `Created client ${name}`,
+        summary: `Created client ${name}${payingSummary}`,
         entityType: "client",
         entityId: data.id,
         clientId: data.id,
@@ -202,6 +284,8 @@ export function ClientFormDialog({
       }
     }
     qc.invalidateQueries({ queryKey: ["clients"] });
+    qc.invalidateQueries({ queryKey: ["client"] });
+    qc.invalidateQueries({ queryKey: ["client-return-address"] });
     setSaving(false);
     reset();
     onOpenChange(false);
@@ -236,6 +320,29 @@ export function ClientFormDialog({
             <div className="space-y-1.5">
               <Label>Phone</Label>
               <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
+            </div>
+          </div>
+          <div className="rounded-lg border p-3 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <Label htmlFor="paying-client" className="mb-0">
+                  Paying client
+                </Label>
+                <p className="text-[11px] text-muted-foreground">
+                  Staff set this at their discretion. It does not check or change a payment.
+                </p>
+              </div>
+              <Switch id="paying-client" checked={isPaying} onCheckedChange={setIsPaying} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="paying-note">Paying note (optional)</Label>
+              <Textarea
+                id="paying-note"
+                value={payingNote}
+                onChange={(e) => setPayingNote(e.target.value)}
+                rows={2}
+                placeholder="Why this client is marked paying"
+              />
             </div>
           </div>
           <div className="space-y-1.5">

@@ -43,18 +43,23 @@ export function PageHeader({
   title,
   description,
   actions,
+  badge,
 }: {
   title: string;
   description?: string;
   actions?: ReactNode;
+  badge?: ReactNode;
 }) {
   return (
     <div className="relative flex flex-wrap items-end justify-between gap-3 border-b border-border bg-gradient-to-r from-background via-background to-secondary/30 px-6 py-5">
       <div className="absolute inset-y-0 left-0 w-1 bg-accent/80" aria-hidden />
       <div className="pl-3">
-        <h1 className="font-serif text-2xl font-semibold tracking-tight text-foreground">
-          {title}
-        </h1>
+        <div className="flex flex-wrap items-center gap-2">
+          <h1 className="font-serif text-2xl font-semibold tracking-tight text-foreground">
+            {title}
+          </h1>
+          {badge}
+        </div>
         {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
       </div>
       {actions && <div className="flex items-center gap-2">{actions}</div>}

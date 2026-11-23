@@ -35,7 +35,9 @@ function ClientsList() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clients")
-        .select("id, name, email, phone, status, assigned_consultant, companies(count)")
+        .select(
+          "id, name, email, phone, status, is_paying_client, assigned_consultant, companies(count)",
+        )
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -103,9 +105,14 @@ function ClientsList() {
                 filtered.map((c: any) => (
                   <tr key={c.id} className="border-t hover:bg-muted/30">
                     <td className="px-4 py-2.5 font-medium">
-                      <Link to="/clients/$id" params={{ id: c.id }} className="hover:text-accent">
-                        {c.name}
-                      </Link>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Link to="/clients/$id" params={{ id: c.id }} className="hover:text-accent">
+                          {c.name}
+                        </Link>
+                        {c.is_paying_client ? (
+                          <Badge variant="secondary">Paying client</Badge>
+                        ) : null}
+                      </div>
                     </td>
                     <td className="px-4 py-2.5 text-muted-foreground">{c.email ?? "—"}</td>
                     <td className="px-4 py-2.5 text-muted-foreground">{c.phone ?? "—"}</td>
