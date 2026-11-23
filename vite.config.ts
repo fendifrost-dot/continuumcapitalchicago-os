@@ -5,11 +5,31 @@
 //     error logger plugins, and sandbox detection (port/host/strictPort).
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
+import { resolveSupabaseBrowserConfig } from "./src/integrations/supabase/public-env";
+
+// The client bundle only sees import.meta.env.VITE_*. Vite replaces process.env
+// with {} there, so the server name SUPABASE_URL never reaches the browser.
+// Inline the resolved public URL and anon key. Lovable's 2.27 sandbox plugin
+// bridges those names only for `vite dev` on the server, not for production.
+const browserSupabase = resolveSupabaseBrowserConfig({
+  viteUrl: process.env.VITE_SUPABASE_URL,
+  serverUrl: process.env.SUPABASE_URL,
+  vitePublishableKey: process.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+  serverPublishableKey: process.env.SUPABASE_PUBLISHABLE_KEY,
+});
 
 export default defineConfig({
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
     server: { entry: "server" },
+  },
+  vite: {
+    define: {
+      "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(browserSupabase.url),
+      "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(
+        browserSupabase.publishableKey,
+      ),
+    },
   },
 });
