@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { ArrowLeft, Mail, Phone, Building2 } from "lucide-react";
 
 import { PageHeader } from "@/components/app-shell";
@@ -9,10 +10,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { DocumentUpload, getDocumentUrl } from "@/components/document-upload";
 import { ActivityTimeline } from "@/components/activity-timeline";
+import { ClientFormDialog } from "@/components/client-form-dialog";
 import { ClientMailingAddress } from "@/components/client-mailing-address";
 import { CreditFileStaff } from "@/components/credit-file-staff";
 import { supabase } from "@/integrations/supabase/client";
 import { currency, formatDate, formatDateTime } from "@/lib/format";
+import { useCurrentUser } from "@/lib/use-current-user";
 
 export const Route = createFileRoute("/_authenticated/clients/$id")({
   component: ClientDetail,
@@ -20,6 +23,8 @@ export const Route = createFileRoute("/_authenticated/clients/$id")({
 
 function ClientDetail() {
   const { id } = Route.useParams();
+  const { data: user } = useCurrentUser();
+  const [editOpen, setEditOpen] = useState(false);
 
   const { data } = useQuery({
     queryKey: ["client", id],
@@ -69,12 +74,22 @@ function ClientDetail() {
       <PageHeader
         title={client?.name ?? "Client"}
         description={client?.email ?? ""}
+        badge={
+          client?.is_paying_client ? <Badge variant="secondary">Paying client</Badge> : undefined
+        }
         actions={
-          <Button variant="ghost" size="sm" asChild>
-            <Link to="/clients">
-              <ArrowLeft className="h-4 w-4" /> Back
-            </Link>
-          </Button>
+          <>
+            {user?.isInternal && client ? (
+              <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+                Edit
+              </Button>
+            ) : null}
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/clients">
+                <ArrowLeft className="h-4 w-4" /> Back
+              </Link>
+            </Button>
+          </>
         }
       />
       <div className="p-6">
@@ -96,6 +111,11 @@ function ClientDetail() {
                     Status
                   </div>
                   <Badge className="capitalize">{client?.status ?? "—"}</Badge>
+                  {client?.paying_note ? (
+                    <p className="pt-2 text-xs text-muted-foreground whitespace-pre-line">
+                      Paying note: {client.paying_note}
+                    </p>
+                  ) : null}
                 </CardContent>
               </Card>
               <Card>
@@ -286,6 +306,9 @@ function ClientDetail() {
           </TabsContent>
         </Tabs>
       </div>
+      {client ? (
+        <ClientFormDialog open={editOpen} onOpenChange={setEditOpen} client={client} />
+      ) : null}
     </>
   );
 }
