@@ -145,7 +145,7 @@ test("the migration lets staff record a paying client and blocks everyone else",
 
 test("staff screens show the flag and payment code does not read it", () => {
   const form = readFileSync(join(root, "src/components/client-form-dialog.tsx"), "utf8");
-  const list = readFileSync(join(root, "src/routes/_authenticated/clients.tsx"), "utf8");
+  const list = readFileSync(join(root, "src/routes/_authenticated/clients.index.tsx"), "utf8");
   const detail = readFileSync(join(root, "src/routes/_authenticated/clients.$id.tsx"), "utf8");
   for (const source of [form, list, detail]) {
     assert.match(source, /Paying client/);

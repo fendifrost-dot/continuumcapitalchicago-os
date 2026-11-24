@@ -28,6 +28,8 @@ import { Route as AuthenticatedClientsRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
 import { Route as AuthenticatedActivityRouteImport } from './routes/_authenticated/activity'
 import { Route as AuthenticatedAccountsRouteImport } from './routes/_authenticated/accounts'
+import { Route as AuthenticatedCompaniesIndexRouteImport } from './routes/_authenticated/companies.index'
+import { Route as AuthenticatedClientsIndexRouteImport } from './routes/_authenticated/clients.index'
 import { Route as AuthenticatedCompaniesIdRouteImport } from './routes/_authenticated/companies.$id'
 import { Route as AuthenticatedClientsIdRouteImport } from './routes/_authenticated/clients.$id'
 
@@ -126,6 +128,18 @@ const AuthenticatedAccountsRoute = AuthenticatedAccountsRouteImport.update({
   path: '/accounts',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedCompaniesIndexRoute =
+  AuthenticatedCompaniesIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedCompaniesRoute,
+  } as any)
+const AuthenticatedClientsIndexRoute =
+  AuthenticatedClientsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedClientsRoute,
+  } as any)
 const AuthenticatedCompaniesIdRoute =
   AuthenticatedCompaniesIdRouteImport.update({
     id: '/$id',
@@ -159,6 +173,8 @@ export interface FileRoutesByFullPath {
   '/transactions': typeof AuthenticatedTransactionsRoute
   '/clients/$id': typeof AuthenticatedClientsIdRoute
   '/companies/$id': typeof AuthenticatedCompaniesIdRoute
+  '/clients/': typeof AuthenticatedClientsIndexRoute
+  '/companies/': typeof AuthenticatedCompaniesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -166,8 +182,6 @@ export interface FileRoutesByTo {
   '/accounts': typeof AuthenticatedAccountsRoute
   '/activity': typeof AuthenticatedActivityRoute
   '/calendar': typeof AuthenticatedCalendarRoute
-  '/clients': typeof AuthenticatedClientsRouteWithChildren
-  '/companies': typeof AuthenticatedCompaniesRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/documents': typeof AuthenticatedDocumentsRoute
   '/file': typeof AuthenticatedFileRoute
@@ -181,6 +195,8 @@ export interface FileRoutesByTo {
   '/transactions': typeof AuthenticatedTransactionsRoute
   '/clients/$id': typeof AuthenticatedClientsIdRoute
   '/companies/$id': typeof AuthenticatedCompaniesIdRoute
+  '/clients': typeof AuthenticatedClientsIndexRoute
+  '/companies': typeof AuthenticatedCompaniesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -205,6 +221,8 @@ export interface FileRoutesById {
   '/_authenticated/transactions': typeof AuthenticatedTransactionsRoute
   '/_authenticated/clients/$id': typeof AuthenticatedClientsIdRoute
   '/_authenticated/companies/$id': typeof AuthenticatedCompaniesIdRoute
+  '/_authenticated/clients/': typeof AuthenticatedClientsIndexRoute
+  '/_authenticated/companies/': typeof AuthenticatedCompaniesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -229,6 +247,8 @@ export interface FileRouteTypes {
     | '/transactions'
     | '/clients/$id'
     | '/companies/$id'
+    | '/clients/'
+    | '/companies/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -236,8 +256,6 @@ export interface FileRouteTypes {
     | '/accounts'
     | '/activity'
     | '/calendar'
-    | '/clients'
-    | '/companies'
     | '/dashboard'
     | '/documents'
     | '/file'
@@ -251,6 +269,8 @@ export interface FileRouteTypes {
     | '/transactions'
     | '/clients/$id'
     | '/companies/$id'
+    | '/clients'
+    | '/companies'
   id:
     | '__root__'
     | '/'
@@ -274,6 +294,8 @@ export interface FileRouteTypes {
     | '/_authenticated/transactions'
     | '/_authenticated/clients/$id'
     | '/_authenticated/companies/$id'
+    | '/_authenticated/clients/'
+    | '/_authenticated/companies/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -417,6 +439,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAccountsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/companies/': {
+      id: '/_authenticated/companies/'
+      path: '/'
+      fullPath: '/companies/'
+      preLoaderRoute: typeof AuthenticatedCompaniesIndexRouteImport
+      parentRoute: typeof AuthenticatedCompaniesRoute
+    }
+    '/_authenticated/clients/': {
+      id: '/_authenticated/clients/'
+      path: '/'
+      fullPath: '/clients/'
+      preLoaderRoute: typeof AuthenticatedClientsIndexRouteImport
+      parentRoute: typeof AuthenticatedClientsRoute
+    }
     '/_authenticated/companies/$id': {
       id: '/_authenticated/companies/$id'
       path: '/$id'
@@ -436,10 +472,12 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedClientsRouteChildren {
   AuthenticatedClientsIdRoute: typeof AuthenticatedClientsIdRoute
+  AuthenticatedClientsIndexRoute: typeof AuthenticatedClientsIndexRoute
 }
 
 const AuthenticatedClientsRouteChildren: AuthenticatedClientsRouteChildren = {
   AuthenticatedClientsIdRoute: AuthenticatedClientsIdRoute,
+  AuthenticatedClientsIndexRoute: AuthenticatedClientsIndexRoute,
 }
 
 const AuthenticatedClientsRouteWithChildren =
@@ -447,11 +485,13 @@ const AuthenticatedClientsRouteWithChildren =
 
 interface AuthenticatedCompaniesRouteChildren {
   AuthenticatedCompaniesIdRoute: typeof AuthenticatedCompaniesIdRoute
+  AuthenticatedCompaniesIndexRoute: typeof AuthenticatedCompaniesIndexRoute
 }
 
 const AuthenticatedCompaniesRouteChildren: AuthenticatedCompaniesRouteChildren =
   {
     AuthenticatedCompaniesIdRoute: AuthenticatedCompaniesIdRoute,
+    AuthenticatedCompaniesIndexRoute: AuthenticatedCompaniesIndexRoute,
   }
 
 const AuthenticatedCompaniesRouteWithChildren =
